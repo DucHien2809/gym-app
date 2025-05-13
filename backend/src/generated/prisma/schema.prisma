@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  email        String    @unique
+  password     String
+  role         String    @default("member")
+  phone        String?
+  address      String?
+  dateOfBirth  DateTime?
+  profileImage String?   @default("default.jpg")
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  subscriptions        Subscription[] @relation("MemberSubscriptions")
+  attendances          Attendance[]   @relation("MemberAttendances")
+  createdSubscriptions Subscription[] @relation("SubscriptionCreatedBy")
+  createdAttendances   Attendance[]   @relation("AttendanceCreatedBy")
+}
+
+model Membership {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
+  description String
+  duration    Int // Number of months
+  price       Float
+  features    String[]
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  subscriptions Subscription[] @relation("MembershipSubscriptions")
+}
+
+model Subscription {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  memberId      String    @db.ObjectId
+  membershipId  String    @db.ObjectId
+  startDate     DateTime  @default(now())
+  endDate       DateTime
+  paymentStatus String    @default("pending")
+  paymentAmount Float
+  paymentDate   DateTime?
+  paymentMethod String    @default("cash")
+  active        Boolean   @default(true)
+  notes         String?
+  createdById   String?   @db.ObjectId
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  member     User       @relation("MemberSubscriptions", fields: [memberId], references: [id])
+  membership Membership @relation("MembershipSubscriptions", fields: [membershipId], references: [id])
+  createdBy  User?      @relation("SubscriptionCreatedBy", fields: [createdById], references: [id])
+}
+
+model Attendance {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  memberId     String    @db.ObjectId
+  checkInTime  DateTime  @default(now())
+  checkOutTime DateTime?
+  duration     Int? // Duration in minutes
+  notes        String?
+  createdById  String?   @db.ObjectId
+  createdAt    DateTime  @default(now())
+
+  // Relations
+  member    User  @relation("MemberAttendances", fields: [memberId], references: [id])
+  createdBy User? @relation("AttendanceCreatedBy", fields: [createdById], references: [id])
+}
