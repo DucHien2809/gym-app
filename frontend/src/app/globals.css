@@ -78,3 +78,64 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--primary-light);
 }
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-container {
+  z-index: 10000;
+  position: relative;
+  background: white;
+  color: #171717; /* Ensure text is visible against white background */
+  border-radius: 0.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Ensure form elements in modals have visible text */
+.modal-container h3,
+.modal-container label,
+.modal-container p,
+.modal-container button,
+.modal-container input,
+.modal-container textarea,
+.modal-container select {
+  color: #171717;
+}
+
+.modal-container input::placeholder,
+.modal-container textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* Global form element text colors */
+input, select, textarea {
+  color: #171717 !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Ensure modals are visible and on top */
+.fixed.inset-0.z-50 {
+  z-index: 9999 !important;
+}
+
+.fixed.inset-0.transition-opacity {
+  z-index: 9999 !important;
+}
+
+.inline-block.transform {
+  z-index: 10000 !important;
+}

@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { subscriptionAPI } from '@/services/api';
+import { subscriptionAPI, membershipAPI } from '@/services/api';
 import { motion } from 'framer-motion';
-import { FiCreditCard, FiCalendar, FiArrowLeft, FiFilter, FiCheck, FiClock, FiInfo, FiAlertCircle, FiDollarSign, FiChevronRight } from 'react-icons/fi';
+import { FiCreditCard, FiCalendar, FiArrowLeft, FiFilter, FiCheck, FiClock, FiInfo, FiAlertCircle, FiDollarSign, FiChevronRight, FiShoppingCart, FiX } from 'react-icons/fi';
+import DebugHelper from './debug-helper';
 
 interface Subscription {
   id: string;
@@ -34,6 +35,18 @@ export default function MemberSubscriptions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Add new states for displaying and selecting memberships
+  const [availableMemberships, setAvailableMemberships] = useState<any[]>([]);
+  const [membershipLoading, setMembershipLoading] = useState(false);
+  const [membershipError, setMembershipError] = useState<string | null>(null);
+  const [showMembershipsModal, setShowMembershipsModal] = useState(false);
+  const [subscribeLoading, setSubscribeLoading] = useState(false);
+  const [subscribeSuccess, setSubscribeSuccess] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
+
+  // Add new states for tracking data source
+  const [membershipDataSource, setMembershipDataSource] = useState<'api' | 'localStorage' | 'mock'>('mock');
 
   useEffect(() => {
     if (!auth.isAuthenticated) {
@@ -50,15 +63,50 @@ export default function MemberSubscriptions() {
       try {
         setLoading(true);
         
-        // Try to get data from localStorage first
-        const savedSubscriptions = localStorage.getItem('memberSubscriptions');
-        if (savedSubscriptions) {
-          setSubscriptions(JSON.parse(savedSubscriptions));
-          setLoading(false);
-          return;
+        // Try to fetch subscriptions from the API
+        if (auth.user && auth.user.id) {
+          try {
+            const response = await subscriptionAPI.getMemberSubscriptions(auth.user.id);
+            
+            if (response.status === 'success' && response.data && response.data.subscriptions) {
+              // Map the API response to match our interface
+              const subscriptionsData = Array.isArray(response.data.subscriptions) 
+                ? response.data.subscriptions 
+                : [response.data.subscriptions];
+                
+              const mappedSubscriptions = subscriptionsData.map((sub: any) => ({
+                id: sub.id,
+                memberId: sub.memberId,
+                membershipId: sub.membershipId,
+                startDate: sub.startDate,
+                endDate: sub.endDate,
+                active: sub.active,
+                paymentStatus: sub.paymentStatus,
+                paymentMethod: sub.paymentMethod,
+                amount: sub.paymentAmount,
+                membership: {
+                  id: sub.membership?.id || sub.membershipId,
+                  name: sub.membership?.name || 'Membership Plan',
+                  description: sub.membership?.description || 'No description available',
+                  duration: sub.membership?.duration || 1,
+                  price: sub.membership?.price || sub.paymentAmount,
+                  features: sub.membership?.features || []
+                }
+              }));
+              
+              setSubscriptions(mappedSubscriptions);
+              setLoading(false);
+              return;
+            }
+          } catch (error) {
+            console.error('API error:', error);
+            // Fall back to dummy data if API fails
+          }
         }
-
-        // Fake data for development
+        
+        console.log('Using mock subscription data as API call failed or returned no data');
+        
+        // If API request fails or no data, use fake data for development
         const today = new Date();
         const oneMonthLater = new Date(today);
         oneMonthLater.setMonth(today.getMonth() + 1);
@@ -176,7 +224,291 @@ export default function MemberSubscriptions() {
   };
 
   const handleBrowseMemberships = () => {
-    router.push('/membership');
+    // Instead of redirecting, open the modal to show available memberships
+    fetchAvailableMemberships();
+    setShowMembershipsModal(true);
+  };
+
+  // New function to fetch all available memberships from the API
+  const fetchAvailableMemberships = async () => {
+    try {
+      setMembershipLoading(true);
+      setMembershipError(null);
+      
+      // Ưu tiên lấy dữ liệu từ API trước
+      const response = await membershipAPI.getAllMemberships();
+      console.log('API response for memberships:', response);
+      
+      if (response.status === 'success' && response.data && Array.isArray(response.data.memberships) && response.data.memberships.length > 0) {
+        // Sử dụng dữ liệu từ API nếu có
+        console.log('Using membership data from API');
+        
+        // Filter duplicates by ID before setting state
+        const uniqueMemberships = response.data.memberships.filter((membership, index, self) =>
+          index === self.findIndex((m) => m.id === membership.id)
+        );
+        
+        setAvailableMemberships(uniqueMemberships);
+        setMembershipDataSource('api');
+      } else {
+        // Nếu API không có dữ liệu, kiểm tra localStorage
+        console.log('API returned no memberships, checking localStorage');
+        const savedMemberships = localStorage.getItem('gymMemberships');
+        if (savedMemberships) {
+          const membershipsData = JSON.parse(savedMemberships);
+          if (Array.isArray(membershipsData) && membershipsData.length > 0) {
+            console.log('Using membership data from localStorage');
+            setAvailableMemberships(membershipsData);
+            setMembershipDataSource('localStorage');
+          } else {
+            // Fallback to mock data if both API and localStorage fail
+            useMockMembershipData();
+          }
+        } else {
+          // Fallback to mock data if both API and localStorage fail
+          useMockMembershipData();
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching available memberships:', error);
+      setMembershipError('Không thể tải danh sách gói tập từ cơ sở dữ liệu. Vui lòng thử lại sau.');
+      
+      // Nếu API gặp lỗi, thử dùng localStorage
+      try {
+        const savedMemberships = localStorage.getItem('gymMemberships');
+        if (savedMemberships) {
+          const membershipsData = JSON.parse(savedMemberships);
+          if (Array.isArray(membershipsData) && membershipsData.length > 0) {
+            console.log('API error, using membership data from localStorage');
+            
+            // Filter duplicates from localStorage data
+            const uniqueMemberships = membershipsData.filter((membership, index, self) =>
+              index === self.findIndex((m) => m.id === membership.id)
+            );
+            
+            setAvailableMemberships(uniqueMemberships);
+            setMembershipDataSource('localStorage');
+          } else {
+            // Fallback to mock data
+            useMockMembershipData();
+          }
+        } else {
+          // Fallback to mock data
+          useMockMembershipData();
+        }
+      } catch (localStorageError) {
+        console.error('Error reading from localStorage:', localStorageError);
+        // Fallback to mock data
+        useMockMembershipData();
+      }
+    } finally {
+      setMembershipLoading(false);
+    }
+  };
+  
+  // Helper function to set mock data
+  const useMockMembershipData = () => {
+    console.log('Using mock membership data');
+    const mockMemberships = [
+      {
+        id: 'membership1',
+        name: 'Basic',
+        description: 'Gói cơ bản dành cho người mới bắt đầu.',
+        duration: 2,
+        price: 200000,
+        features: [
+          'Truy cập phòng tập không giới hạn',
+          'Sử dụng thiết bị cơ bản',
+          'Tư vấn dinh dưỡng cơ bản',
+          'Giờ tập: 8:00 - 22:00'
+        ]
+      },
+      {
+        id: 'membership2',
+        name: 'Standard',
+        description: 'Gói phổ biến nhất với nhiều tiện ích.',
+        duration: 3,
+        price: 800000,
+        features: [
+          'Truy cập phòng tập không giới hạn',
+          'Sử dụng đầy đủ thiết bị',
+          '2 buổi với HLV cá nhân',
+          'Tư vấn dinh dưỡng chuyên sâu',
+          'Sử dụng phòng xông hơi',
+          'Giờ tập: 6:00 - 23:00'
+        ]
+      },
+      {
+        id: 'membership3',
+        name: 'Premium',
+        description: 'Trải nghiệm cao cấp với đầy đủ tiện ích VIP.',
+        duration: 12,
+        price: 2500000,
+        features: [
+          'Truy cập phòng tập 24/7',
+          'Sử dụng đầy đủ thiết bị cao cấp',
+          '8 buổi với HLV cá nhân',
+          'Kế hoạch dinh dưỡng và luyện tập cá nhân hóa',
+          'Sử dụng phòng xông hơi & spa',
+          'Nước uống miễn phí',
+          'Chỗ đỗ xe ưu tiên',
+          'Khu vực VIP riêng biệt'
+        ]
+      }
+    ];
+    
+    // Also save to localStorage for consistency
+    localStorage.setItem('gymMemberships', JSON.stringify(mockMemberships));
+    
+    setAvailableMemberships(mockMemberships);
+    setMembershipDataSource('mock');
+  };
+
+  // Function to handle membership subscription
+  const handleSubscribe = async (membershipId: string) => {
+    if (!auth.user) {
+      router.push('/auth/login');
+      return;
+    }
+    
+    try {
+      setSubscribeLoading(true);
+      setSubscribeError(null);
+      
+      console.log('Subscribing to membership ID:', membershipId);
+      console.log('Available memberships:', availableMemberships);
+      console.log('User auth:', auth);
+      
+      // Get membership details
+      const selectedMembership = availableMemberships.find(m => m.id === membershipId);
+      if (!selectedMembership) {
+        console.error('Membership not found with ID:', membershipId);
+        throw new Error('Không tìm thấy thông tin gói tập.');
+      }
+      
+      console.log('Selected membership:', selectedMembership);
+      
+      // Check if user role is member
+      if (auth.user.role !== 'member') {
+        console.error('User does not have member role:', auth.user.role);
+        throw new Error('Bạn cần có quyền thành viên để đăng ký gói tập.');
+      }
+      
+      // Calculate start and end dates
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + selectedMembership.duration);
+      
+      // Create subscription data
+      const subscriptionData = {
+        memberId: auth.user.id,
+        membershipId: membershipId,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        paymentStatus: 'pending', // Default to pending as required
+        paymentMethod: '', // Will be filled by admin
+        paymentAmount: selectedMembership.price,
+        active: true, // Active until payment deadline passes
+        notes: 'Đăng ký mới. Vui lòng thanh toán trong vòng 24h.'
+      };
+      
+      console.log('Subscription data:', subscriptionData);
+      
+      // Call API to create subscription
+      const response = await subscriptionAPI.createSubscription(subscriptionData);
+      console.log('API response:', response);
+      
+      if (response.status === 'success' && response.data && response.data.subscription) {
+        setSubscribeSuccess(true);
+        
+        // Add new subscription to the existing list
+        const subscriptionId = (response.data.subscription as any).id || `temp-${Date.now()}`;
+        const newSubscription = {
+          id: subscriptionId,
+          memberId: auth.user.id,
+          membershipId: membershipId,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          active: true,
+          paymentStatus: 'pending',
+          amount: selectedMembership.price,
+          membership: {
+            id: selectedMembership.id,
+            name: selectedMembership.name,
+            description: selectedMembership.description,
+            duration: selectedMembership.duration,
+            price: selectedMembership.price,
+            features: selectedMembership.features
+          }
+        };
+        
+        setSubscriptions(prevSubscriptions => [newSubscription, ...prevSubscriptions]);
+        
+        // Close modal after 2 seconds
+        setTimeout(() => {
+          setShowMembershipsModal(false);
+          setSubscribeSuccess(false);
+        }, 2000);
+      } else if (response.status === 'error' && response.message?.includes('permission')) {
+        throw new Error('Bạn không có quyền thực hiện hành động này. Vui lòng liên hệ quản lý.');
+      } else {
+        throw new Error(response.message || 'Đăng ký gói tập thất bại.');
+      }
+    } catch (error) {
+      console.error('Error subscribing to membership:', error);
+      const errorMsg = (error as Error).message || 'Đăng ký gói tập thất bại. Vui lòng thử lại sau.';
+      setSubscribeError(errorMsg);
+      
+      // If mock data is being used and there's a permission error, simulate a successful subscription
+      if (membershipDataSource === 'mock' && errorMsg.includes('không có quyền')) {
+        // Create a simulated subscription with the mock data
+        simulateMockSubscription(membershipId);
+      }
+    } finally {
+      setSubscribeLoading(false);
+    }
+  };
+  
+  // Helper function to simulate a successful subscription in mock mode
+  const simulateMockSubscription = (membershipId: string) => {
+    const selectedMembership = availableMemberships.find(m => m.id === membershipId);
+    if (!selectedMembership || !auth.user) return;
+    
+    // Calculate start and end dates
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + selectedMembership.duration);
+    
+    // Create a mock subscription
+    const newSubscription = {
+      id: `mock-${Date.now()}`,
+      memberId: auth.user.id,
+      membershipId: membershipId,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      active: true,
+      paymentStatus: 'pending',
+      amount: selectedMembership.price,
+      membership: {
+        id: selectedMembership.id,
+        name: selectedMembership.name,
+        description: selectedMembership.description,
+        duration: selectedMembership.duration,
+        price: selectedMembership.price,
+        features: selectedMembership.features
+      }
+    };
+    
+    // Update the UI to show success and add the subscription
+    setSubscribeSuccess(true);
+    setSubscribeError(null);
+    setSubscriptions(prevSubscriptions => [newSubscription, ...prevSubscriptions]);
+    
+    // Close modal after 2 seconds
+    setTimeout(() => {
+      setShowMembershipsModal(false);
+      setSubscribeSuccess(false);
+    }, 2000);
   };
 
   const getDaysRemaining = (endDate: string) => {
@@ -600,7 +932,173 @@ export default function MemberSubscriptions() {
             )}
           </div>
         )}
+        
+        {/* Add the memberships modal */}
+        {showMembershipsModal && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center">
+              <div className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" onClick={() => !subscribeLoading && setShowMembershipsModal(false)}></div>
+              
+              <div className="relative inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
+                <div className="absolute top-0 right-0 pt-4 pr-4">
+                  <button
+                    type="button"
+                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+                    onClick={() => !subscribeLoading && setShowMembershipsModal(false)}
+                    disabled={subscribeLoading}
+                  >
+                    <span className="sr-only">Close</span>
+                    <FiX className="h-6 w-6" />
+                  </button>
+                </div>
+                
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                    <h3 className="text-xl leading-6 font-bold text-gray-900 mb-6">
+                      Chọn gói tập
+                    </h3>
+                    
+                    {availableMemberships.length > 0 && (
+                      <div className="mb-4 text-sm text-gray-500 bg-blue-50 p-2 rounded-md">
+                        <FiInfo className="inline-block mr-1" /> 
+                        Hiển thị {availableMemberships.length} gói tập có sẵn. 
+                        {membershipDataSource === 'api' ? ' (Dữ liệu từ API)' : membershipDataSource === 'localStorage' ? ' (Dữ liệu từ bộ nhớ cục bộ)' : ' (Dữ liệu từ mock)'}
+                      </div>
+                    )}
+                    
+                    {subscribeSuccess ? (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                        <div className="flex">
+                          <div className="flex-shrink-0">
+                            <FiCheck className="h-5 w-5 text-green-500" />
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-green-800">
+                              Đăng ký gói tập thành công! Vui lòng thanh toán trong vòng 24 giờ.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : subscribeError ? (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                        <div className="flex">
+                          <div className="flex-shrink-0">
+                            <FiAlertCircle className="h-5 w-5 text-red-500" />
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-red-800">{subscribeError}</p>
+                            {subscribeError.includes('không có quyền') && (
+                              <p className="text-sm text-red-600 mt-1">
+                                Đây là môi trường demo, bạn có thể tiếp tục đăng ký để thử nghiệm. Trong môi trường thực tế, bạn cần liên hệ quản lý.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                    
+                    {membershipLoading ? (
+                      <div className="flex justify-center py-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+                      </div>
+                    ) : membershipError ? (
+                      <div className="text-center py-12">
+                        <p className="text-red-500 mb-4">{membershipError}</p>
+                        <button 
+                          onClick={fetchAvailableMemberships}
+                          className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                        >
+                          Thử lại
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        {availableMemberships.map((membership) => (
+                          <div 
+                            key={membership.id} 
+                            className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-200"
+                          >
+                            <div className={`p-5 ${
+                              membership.name === 'Basic' || membership.name === 'Cơ bản' 
+                                ? 'bg-blue-600' 
+                                : membership.name === 'Standard' || membership.name === 'Tiêu chuẩn'
+                                ? 'bg-indigo-600'
+                                : 'bg-purple-600'
+                            } text-white`}>
+                              <h3 className="text-lg font-semibold">{membership.name}</h3>
+                              <p className="text-2xl font-bold mt-2">{membership.price.toLocaleString('vi-VN')} đ</p>
+                              <p className="mt-1 text-sm opacity-90">{membership.duration} tháng</p>
+                            </div>
+                            
+                            <div className="p-5">
+                              <p className="text-gray-600 mb-4">{membership.description}</p>
+                              
+                              <ul className="space-y-2 mb-6">
+                                {membership.features.map((feature: string, idx: number) => (
+                                  <li key={idx} className="flex items-start">
+                                    <FiCheck className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
+                                    <span className="text-sm text-gray-600">{feature}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                              
+                              <button
+                                onClick={() => handleSubscribe(membership.id)}
+                                disabled={subscribeLoading}
+                                className={`w-full inline-flex justify-center items-center px-4 py-2 ${
+                                  membership.name === 'Basic' || membership.name === 'Cơ bản'
+                                    ? 'bg-blue-600 hover:bg-blue-700' 
+                                    : membership.name === 'Standard' || membership.name === 'Tiêu chuẩn'
+                                    ? 'bg-indigo-600 hover:bg-indigo-700'
+                                    : 'bg-purple-600 hover:bg-purple-700'
+                                } text-white rounded-lg transition-colors duration-200`}
+                              >
+                                {subscribeLoading ? (
+                                  <>
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Đang xử lý...
+                                  </>
+                                ) : (
+                                  <>
+                                    <FiShoppingCart className="mr-2 h-4 w-4" /> Đăng ký ngay
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="mt-5 sm:mt-6 border-t border-gray-200 pt-4">
+                  <p className="text-sm text-gray-500 mb-4">
+                    <FiInfo className="inline-block mr-1" /> 
+                    Sau khi đăng ký, bạn cần thanh toán trong vòng 24 giờ để kích hoạt gói tập. 
+                    Vui lòng liên hệ quản lý để được hướng dẫn thanh toán.
+                  </p>
+                  
+                  <button
+                    type="button"
+                    className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:text-sm"
+                    onClick={() => !subscribeLoading && setShowMembershipsModal(false)}
+                    disabled={subscribeLoading}
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
+      
+      {/* Debug helper component */}
+      <DebugHelper />
     </div>
   );
 } 

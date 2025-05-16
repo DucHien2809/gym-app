@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
-// Available roles
+// Các vai trò có sẵn
 type AllowedRoles = 'admin' | 'trainer' | 'member' | undefined;
 
 interface ProtectedRouteProps {
@@ -17,19 +17,19 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const router = useRouter();
 
   useEffect(() => {
-    // Only check when loading is complete
+    // Chỉ kiểm tra khi quá trình tải hoàn tất
     if (!loading) {
-      // Check if user is not logged in
+      // Kiểm tra nếu người dùng chưa đăng nhập
       if (!auth.user) {
         router.push('/auth/login');
         return;
       }
 
-      // Check roles if allowedRoles is defined
+      // Kiểm tra vai trò nếu allowedRoles được xác định
       if (allowedRoles && allowedRoles.length > 0) {
         const userRole = auth.user.role;
         if (!allowedRoles.includes(userRole as AllowedRoles)) {
-          // Redirect to the default page based on role
+          // Chuyển hướng đến trang mặc định dựa trên vai trò
           if (userRole === 'admin') {
             router.push('/dashboard/admin');
           } else if (userRole === 'trainer') {
@@ -42,7 +42,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     }
   }, [auth.user, loading, router, allowedRoles]);
 
-  // Display loading state
+  // Hiển thị trạng thái đang tải
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -51,15 +51,15 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     );
   }
 
-  // If user is logged in and has access, show content
+  // Nếu người dùng đã đăng nhập và có quyền truy cập, hiển thị nội dung
   if (auth.user) {
-    // No allowedRoles or user has allowed role
+    // Không có allowedRoles hoặc người dùng có vai trò được phép
     if (!allowedRoles || allowedRoles.includes(auth.user.role as AllowedRoles)) {
       return <>{children}</>;
     }
   }
 
-  // If not redirected yet, show nothing
+  // Nếu chưa được chuyển hướng, không hiển thị gì cả
   return null;
 };
 

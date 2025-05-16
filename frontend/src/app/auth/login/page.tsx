@@ -18,7 +18,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
         <div>
-          <h1 className="text-center text-3xl font-extrabold text-gray-900">GYM MANAGEMENT</h1>
+          <h1 className="text-center text-3xl font-extrabold text-gray-900">QUẢN LÝ PHÒNG TẬP</h1>
           <h2 className="mt-6 text-center text-2xl font-bold text-gray-900">Đăng nhập vào tài khoản</h2>
         </div>
         

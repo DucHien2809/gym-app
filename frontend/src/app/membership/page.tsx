@@ -37,7 +37,7 @@ export default function MembershipPage() {
       <header className="bg-white shadow-md">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="text-2xl font-bold text-indigo-700">
-            GYM MANAGEMENT
+            QUẢN LÝ PHÒNG TẬP
           </Link>
           <nav>
             <ul className="flex space-x-6">
@@ -63,7 +63,7 @@ export default function MembershipPage() {
                     }
                     className="text-gray-800 hover:text-indigo-600 font-medium"
                   >
-                    Dashboard
+                    Bảng điều khiển
                   </Link>
                 </li>
               ) : (

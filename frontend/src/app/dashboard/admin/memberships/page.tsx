@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { membershipAPI } from '@/services/api';
-import { FiEdit2, FiTrash2, FiPlus, FiArrowLeft, FiCheck, FiX, FiDollarSign, FiClock, FiInfo, FiList } from 'react-icons/fi';
+import { membershipAPI, subscriptionAPI } from '@/services/api';
+import { FiEdit2, FiTrash2, FiPlus, FiArrowLeft, FiCheck, FiX, FiDollarSign, FiClock, FiInfo, FiList, FiUser, FiCalendar } from 'react-icons/fi';
+import useModal from '@/hooks/useModal';
 
 interface Membership {
   id: string;
@@ -31,8 +32,12 @@ export default function MembershipManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // States cho modal thêm gói mới
-  const [showAddModal, setShowAddModal] = useState(false);
+  // Sử dụng hook useModal
+  const addModal = useModal();
+  const editModal = useModal();
+  const deleteModal = useModal();
+  
+  // State cho form và submission
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<MembershipFormData>({
     name: '',
@@ -42,15 +47,27 @@ export default function MembershipManagement() {
     features: ['']
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [isClosing, setIsClosing] = useState(false);
   
   // States cho modal sửa gói
-  const [showEditModal, setShowEditModal] = useState(false);
   const [editingMembershipId, setEditingMembershipId] = useState<string | null>(null);
   
   // State hiển thị xác nhận xóa
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingMembershipId, setDeletingMembershipId] = useState<string | null>(null);
+
+  // State cho tab quản lý gói tập và đăng ký
+  const [activeTab, setActiveTab] = useState('memberships'); // 'memberships' hoặc 'subscriptions'
+  
+  // States cho danh sách đăng ký chờ thanh toán
+  const [pendingSubscriptions, setPendingSubscriptions] = useState<any[]>([]);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
+  const [subscriptionsError, setSubscriptionsError] = useState<string | null>(null);
+  
+  // State cho confirmations
+  const [showPaymentConfirm, setShowPaymentConfirm] = useState(false);
+  const [confirmingSubscriptionId, setConfirmingSubscriptionId] = useState<string | null>(null);
+  const [showCancelSubscription, setShowCancelSubscription] = useState(false);
+  const [cancelingSubscriptionId, setCancelingSubscriptionId] = useState<string | null>(null);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
 
   useEffect(() => {
     // Kiểm tra xác thực
@@ -70,135 +87,336 @@ export default function MembershipManagement() {
       try {
         setLoading(true);
         
-        // Kiểm tra dữ liệu trong localStorage trước
-        const savedMemberships = localStorage.getItem('gymMemberships');
-        if (savedMemberships) {
-          setMemberships(JSON.parse(savedMemberships));
-          setLoading(false);
-          return;
+        console.log('Fetching memberships from API first...');
+        
+        // Ưu tiên lấy dữ liệu từ API trước
+        try {
+          const response = await membershipAPI.getAllMemberships();
+          console.log('API response:', response);
+          
+          if (response.status === 'success' && response.data?.memberships) {
+            const membershipsData = response.data.memberships as unknown as Membership[];
+            console.log('Found memberships from API:', membershipsData.length);
+            
+            if (membershipsData.length > 0) {
+              console.log('Using data from API');
+              setMemberships(membershipsData);
+              // Cập nhật localStorage để đồng bộ
+              localStorage.setItem('gymMemberships', JSON.stringify(membershipsData));
+              setLoading(false);
+              return;
+            }
+          }
+          
+          // Nếu API không có dữ liệu, kiểm tra localStorage
+          console.log('API returned no data, checking localStorage');
+          const savedMemberships = localStorage.getItem('gymMemberships');
+          if (savedMemberships) {
+            console.log('Found memberships in localStorage');
+            const parsedMemberships = JSON.parse(savedMemberships);
+            
+            if (parsedMemberships.length > 0) {
+              console.log('Using data from localStorage');
+              setMemberships(parsedMemberships);
+              
+              // Cố gắng đồng bộ dữ liệu từ localStorage lên API
+              console.log('Trying to sync localStorage data to API');
+              for (const membership of parsedMemberships) {
+                try {
+                  // Kiểm tra nếu đã tồn tại thì cập nhật, nếu không thì tạo mới
+                  const membershipData = {
+                    name: membership.name,
+                    description: membership.description,
+                    duration: membership.duration,
+                    price: membership.price,
+                    features: membership.features
+                  };
+                  
+                  await membershipAPI.createMembership(membershipData)
+                    .catch(e => console.error('Error syncing membership to API:', e, membership));
+                } catch (syncError) {
+                  console.error('Error during sync operation:', syncError);
+                }
+              }
+              
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (apiError) {
+          console.error('API error, checking localStorage:', apiError);
+          
+          // Nếu API lỗi, thử dùng localStorage
+          const savedMemberships = localStorage.getItem('gymMemberships');
+          if (savedMemberships) {
+            const parsedMemberships = JSON.parse(savedMemberships);
+            if (parsedMemberships.length > 0) {
+              console.log('Using data from localStorage due to API error');
+              setMemberships(parsedMemberships);
+              setLoading(false);
+              return;
+            }
+          }
         }
         
-        const response = await membershipAPI.getAllMemberships();
-        if (response.status === 'success' && response.data?.memberships) {
-          const membershipsData = response.data.memberships as unknown as Membership[];
-          setMemberships(membershipsData);
-          // Lưu vào localStorage
-          localStorage.setItem('gymMemberships', JSON.stringify(membershipsData));
-        } else {
-          // Dữ liệu mẫu nếu không có dữ liệu từ API
-          const defaultMemberships = [
-            {
-              id: '1',
-              name: 'Basic',
-              description: 'Gói cơ bản dành cho người mới bắt đầu.',
-              duration: 1,
-              price: 300000,
-              features: [
-                'Truy cập phòng tập không giới hạn',
-                'Sử dụng thiết bị cơ bản',
-                'Tư vấn dinh dưỡng cơ bản',
-                'Giờ tập: 8:00 - 22:00'
-              ]
-            },
-            {
-              id: '2',
-              name: 'Standard',
-              description: 'Gói phổ biến nhất với nhiều tiện ích.',
-              duration: 3,
-              price: 800000,
-              features: [
-                'Truy cập phòng tập không giới hạn',
-                'Sử dụng đầy đủ thiết bị',
-                '2 buổi với HLV cá nhân',
-                'Tư vấn dinh dưỡng chuyên sâu',
-                'Sử dụng phòng xông hơi',
-                'Giờ tập: 6:00 - 23:00'
-              ]
-            },
-            {
-              id: '3',
-              name: 'Premium',
-              description: 'Trải nghiệm cao cấp với đầy đủ tiện ích VIP.',
-              duration: 12,
-              price: 2500000,
-              features: [
-                'Truy cập phòng tập 24/7',
-                'Sử dụng đầy đủ thiết bị cao cấp',
-                '8 buổi với HLV cá nhân',
-                'Kế hoạch dinh dưỡng và luyện tập cá nhân hóa',
-                'Sử dụng phòng xông hơi & spa',
-                'Nước uống miễn phí',
-                'Chỗ đỗ xe ưu tiên',
-                'Khu vực VIP riêng biệt'
-              ]
-            }
-          ];
-          setMemberships(defaultMemberships);
-          // Lưu dữ liệu mẫu vào localStorage
-          localStorage.setItem('gymMemberships', JSON.stringify(defaultMemberships));
-        }
+        // Nếu cả API và localStorage đều không có dữ liệu, dùng dữ liệu mẫu
+        console.log('No data in API or localStorage, using default memberships');
+        useDefaultMemberships();
       } catch (err) {
         setError('Không thể tải dữ liệu gói tập. Vui lòng thử lại sau.');
         console.error('Error fetching memberships:', err);
         
-        // Sử dụng dữ liệu mẫu khi có lỗi
-        const fallbackMemberships = [
-          {
-            id: '1',
-            name: 'Basic',
-            description: 'Gói cơ bản dành cho người mới bắt đầu.',
-            duration: 1,
-            price: 300000,
-            features: [
-              'Truy cập phòng tập không giới hạn',
-              'Sử dụng thiết bị cơ bản',
-              'Tư vấn dinh dưỡng cơ bản',
-              'Giờ tập: 8:00 - 22:00'
-            ]
-          },
-          {
-            id: '2',
-            name: 'Standard',
-            description: 'Gói phổ biến nhất với nhiều tiện ích.',
-            duration: 3,
-            price: 800000,
-            features: [
-              'Truy cập phòng tập không giới hạn',
-              'Sử dụng đầy đủ thiết bị',
-              '2 buổi với HLV cá nhân',
-              'Tư vấn dinh dưỡng chuyên sâu',
-              'Sử dụng phòng xông hơi',
-              'Giờ tập: 6:00 - 23:00'
-            ]
-          },
-          {
-            id: '3',
-            name: 'Premium',
-            description: 'Trải nghiệm cao cấp với đầy đủ tiện ích VIP.',
-            duration: 12,
-            price: 2500000,
-            features: [
-              'Truy cập phòng tập 24/7',
-              'Sử dụng đầy đủ thiết bị cao cấp',
-              '8 buổi với HLV cá nhân',
-              'Kế hoạch dinh dưỡng và luyện tập cá nhân hóa',
-              'Sử dụng phòng xông hơi & spa',
-              'Nước uống miễn phí',
-              'Chỗ đỗ xe ưu tiên',
-              'Khu vực VIP riêng biệt'
-            ]
-          }
-        ];
-        setMemberships(fallbackMemberships);
-        // Lưu dữ liệu mẫu vào localStorage
-        localStorage.setItem('gymMemberships', JSON.stringify(fallbackMemberships));
+        // Dùng dữ liệu mẫu nếu có lỗi
+        useDefaultMemberships();
       } finally {
         setLoading(false);
       }
     };
+    
+    // Hàm tạo dữ liệu mẫu
+    const useDefaultMemberships = () => {
+      console.log('Using default membership data');
+      const defaultMemberships = [
+        {
+          id: '1',
+          name: 'Basic',
+          description: 'Gói cơ bản dành cho người mới bắt đầu.',
+          duration: 1,
+          price: 300000,
+          features: [
+            'Truy cập phòng tập không giới hạn',
+            'Sử dụng thiết bị cơ bản',
+            'Tư vấn dinh dưỡng cơ bản',
+            'Giờ tập: 8:00 - 22:00'
+          ]
+        },
+        {
+          id: '2',
+          name: 'Standard',
+          description: 'Gói phổ biến nhất với nhiều tiện ích.',
+          duration: 3,
+          price: 800000,
+          features: [
+            'Truy cập phòng tập không giới hạn',
+            'Sử dụng đầy đủ thiết bị',
+            '2 buổi với HLV cá nhân',
+            'Tư vấn dinh dưỡng chuyên sâu',
+            'Sử dụng phòng xông hơi',
+            'Giờ tập: 6:00 - 23:00'
+          ]
+        },
+        {
+          id: '3',
+          name: 'Premium',
+          description: 'Trải nghiệm cao cấp với đầy đủ tiện ích VIP.',
+          duration: 12,
+          price: 2500000,
+          features: [
+            'Truy cập phòng tập 24/7',
+            'Sử dụng đầy đủ thiết bị cao cấp',
+            '8 buổi với HLV cá nhân',
+            'Kế hoạch dinh dưỡng và luyện tập cá nhân hóa',
+            'Sử dụng phòng xông hơi & spa',
+            'Nước uống miễn phí',
+            'Chỗ đỗ xe ưu tiên',
+            'Khu vực VIP riêng biệt'
+          ]
+        }
+      ];
+      
+      setMemberships(defaultMemberships);
+      localStorage.setItem('gymMemberships', JSON.stringify(defaultMemberships));
+      
+      // Cố gắng lưu dữ liệu mẫu lên API
+      console.log('Trying to save default memberships to API');
+      defaultMemberships.forEach(async (membership) => {
+        try {
+          const membershipData = {
+            name: membership.name,
+            description: membership.description,
+            duration: membership.duration,
+            price: membership.price,
+            features: membership.features
+          };
+          
+          await membershipAPI.createMembership(membershipData)
+            .catch(e => console.error('Error syncing default membership to API:', e, membership));
+        } catch (syncError) {
+          console.error('Error syncing default membership:', syncError);
+        }
+      });
+    };
 
     fetchMemberships();
   }, [auth.isAuthenticated, auth.user, router]);
+
+  // New function to fetch pending subscriptions
+  const fetchPendingSubscriptions = async () => {
+    try {
+      setSubscriptionsLoading(true);
+      setSubscriptionsError(null);
+      
+      const response = await subscriptionAPI.getAllSubscriptions();
+      
+      if (response.status === 'success' && response.data && Array.isArray(response.data.subscriptions)) {
+        // Filter only pending subscriptions
+        const pendingSubs = response.data.subscriptions.filter(
+          (sub: any) => sub.paymentStatus === 'pending'
+        );
+        setPendingSubscriptions(pendingSubs);
+      } else {
+        // Use mock data if API fails
+        const mockPendingSubscriptions = [
+          {
+            id: 'sub1',
+            memberId: 'member1',
+            membershipId: 'membership1',
+            startDate: new Date().toISOString(),
+            endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(),
+            paymentStatus: 'pending',
+            paymentAmount: 300000,
+            active: true,
+            createdAt: new Date().toISOString(),
+            member: {
+              name: 'Nguyễn Văn A',
+              email: 'nguyenvana@example.com'
+            },
+            membership: {
+              name: 'Basic',
+              duration: 1,
+              price: 300000
+            }
+          },
+          {
+            id: 'sub2',
+            memberId: 'member2',
+            membershipId: 'membership2',
+            startDate: new Date().toISOString(),
+            endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(),
+            paymentStatus: 'pending',
+            paymentAmount: 800000,
+            active: true,
+            createdAt: new Date(new Date().setHours(new Date().getHours() - 12)).toISOString(),
+            member: {
+              name: 'Trần Thị B',
+              email: 'tranthib@example.com'
+            },
+            membership: {
+              name: 'Standard',
+              duration: 3,
+              price: 800000
+            }
+          }
+        ];
+        
+        setPendingSubscriptions(mockPendingSubscriptions);
+      }
+    } catch (error) {
+      console.error('Error fetching pending subscriptions:', error);
+      setSubscriptionsError('Không thể tải danh sách đăng ký. Vui lòng thử lại sau.');
+    } finally {
+      setSubscriptionsLoading(false);
+    }
+  };
+
+  // Function to confirm payment
+  const handleConfirmPayment = async () => {
+    if (!confirmingSubscriptionId) return;
+    
+    try {
+      setPaymentProcessing(true);
+      
+      const response = await subscriptionAPI.updatePaymentStatus(confirmingSubscriptionId, {
+        paymentStatus: 'completed',
+        paymentDate: new Date().toISOString(),
+      });
+      
+      if (response.status === 'success') {
+        // Update the list of pending subscriptions
+        setPendingSubscriptions(prev => 
+          prev.filter(sub => sub.id !== confirmingSubscriptionId)
+        );
+        
+        // Close the confirmation modal
+        setShowPaymentConfirm(false);
+        setConfirmingSubscriptionId(null);
+      } else {
+        throw new Error(response.message || 'Xác nhận thanh toán thất bại.');
+      }
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      alert('Đã xảy ra lỗi khi xác nhận thanh toán. Vui lòng thử lại.');
+    } finally {
+      setPaymentProcessing(false);
+    }
+  };
+
+  // Function to cancel subscription
+  const handleCancelSubscription = async () => {
+    if (!cancelingSubscriptionId) return;
+    
+    try {
+      setPaymentProcessing(true);
+      
+      const response = await subscriptionAPI.cancelSubscription(cancelingSubscriptionId);
+      
+      if (response.status === 'success') {
+        // Update the list of pending subscriptions
+        setPendingSubscriptions(prev => 
+          prev.filter(sub => sub.id !== cancelingSubscriptionId)
+        );
+        
+        // Close the confirmation modal
+        setShowCancelSubscription(false);
+        setCancelingSubscriptionId(null);
+      } else {
+        throw new Error(response.message || 'Hủy đăng ký thất bại.');
+      }
+    } catch (error) {
+      console.error('Error canceling subscription:', error);
+      alert('Đã xảy ra lỗi khi hủy đăng ký. Vui lòng thử lại.');
+    } finally {
+      setPaymentProcessing(false);
+    }
+  };
+
+  // Function to handle tab change
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    
+    if (tab === 'subscriptions') {
+      fetchPendingSubscriptions();
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Calculate time remaining for payment
+  const getTimeRemaining = (createdAtString: string) => {
+    const createdAt = new Date(createdAtString);
+    const deadline = new Date(createdAt);
+    deadline.setHours(deadline.getHours() + 24);
+    
+    const now = new Date();
+    const diffMs = deadline.getTime() - now.getTime();
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (diffMs <= 0) {
+      return 'Hết hạn';
+    }
+    
+    return `${diffHrs} giờ ${diffMins} phút`;
+  };
 
   const handleBack = () => {
     router.push('/dashboard/admin');
@@ -214,7 +432,7 @@ export default function MembershipManagement() {
       features: ['']
     });
     setFormErrors({});
-    setShowAddModal(true);
+    addModal.open();
   };
 
   // Xử lý mở modal sửa gói tập
@@ -228,33 +446,32 @@ export default function MembershipManagement() {
     });
     setEditingMembershipId(membership.id);
     setFormErrors({});
-    setShowEditModal(true);
+    editModal.open();
   };
 
-  // Xử lý đóng modal
-  const handleCloseModal = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setShowAddModal(false);
-      setShowEditModal(false);
-      setIsClosing(false);
-    }, 200);
+  // Xử lý đóng modal thêm mới
+  const handleCloseAddModal = () => {
+    if (isSubmitting) return;
+    addModal.close();
+  };
+
+  // Xử lý đóng modal chỉnh sửa
+  const handleCloseEditModal = () => {
+    if (isSubmitting) return;
+    editModal.close();
   };
 
   // Mở dialog xác nhận xóa
   const handleOpenDeleteConfirm = (membershipId: string) => {
     setDeletingMembershipId(membershipId);
-    setShowDeleteConfirm(true);
+    deleteModal.open();
   };
 
   // Đóng dialog xác nhận xóa
   const handleCloseDeleteConfirm = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setShowDeleteConfirm(false);
-      setDeletingMembershipId(null);
-      setIsClosing(false);
-    }, 200);
+    if (isSubmitting) return;
+    deleteModal.close();
+    setDeletingMembershipId(null);
   };
 
   // Xử lý xóa gói tập
@@ -263,40 +480,55 @@ export default function MembershipManagement() {
     
     setIsSubmitting(true);
     
-    // Gọi API xóa membership
-    membershipAPI.deleteMembership(deletingMembershipId)
-      .then((response) => {
-        if (response.status === 'success') {
-          // Tìm và xóa gói tập khỏi state
+    try {
+      // Gọi API xóa membership
+      membershipAPI.deleteMembership(deletingMembershipId)
+        .then((response) => {
+          if (response.status === 'success') {
+            // Tìm và xóa gói tập khỏi state
+            const updatedMemberships = memberships.filter(
+              membership => membership.id !== deletingMembershipId
+            );
+            
+            // Cập nhật state và localStorage
+            setMemberships(updatedMemberships);
+            localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
+            
+            // Đóng modal trước khi hiển thị thông báo
+            deleteModal.close();
+            setDeletingMembershipId(null);
+            
+            // Thông báo đã xóa thành công
+            alert('Đã xóa gói tập thành công!');
+          }
+        })
+        .catch((error) => {
+          console.error('Error deleting membership:', error);
+          
+          // Fallback khi API gặp lỗi - chỉ xóa khỏi localStorage
           const updatedMemberships = memberships.filter(
             membership => membership.id !== deletingMembershipId
           );
           
-          // Cập nhật state và localStorage
           setMemberships(updatedMemberships);
           localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
           
-          // Thông báo đã xóa thành công
-          alert('Đã xóa gói tập thành công!');
-        }
-      })
-      .catch((error) => {
-        console.error('Error deleting membership:', error);
-        
-        // Fallback khi API gặp lỗi - chỉ xóa khỏi localStorage
-        const updatedMemberships = memberships.filter(
-          membership => membership.id !== deletingMembershipId
-        );
-        
-        setMemberships(updatedMemberships);
-        localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
-        
-        alert('Đã xóa gói tập (chỉ cập nhật cục bộ). Hệ thống sẽ đồng bộ khi kết nối được với server.');
-      })
-      .finally(() => {
-        setIsSubmitting(false);
-        handleCloseDeleteConfirm();
-      });
+          // Đóng modal trước khi hiển thị thông báo
+          deleteModal.close();
+          setDeletingMembershipId(null);
+          
+          alert('Đã xóa gói tập (chỉ cập nhật cục bộ). Hệ thống sẽ đồng bộ khi kết nối được với server.');
+        })
+        .finally(() => {
+          setIsSubmitting(false);
+        });
+    } catch (error) {
+      console.error('Unexpected error in delete handler:', error);
+      setIsSubmitting(false);
+      deleteModal.close();
+      setDeletingMembershipId(null);
+      alert('Đã xảy ra lỗi không mong muốn. Vui lòng thử lại sau.');
+    }
   };
 
   // Cập nhật form data khi người dùng nhập
@@ -386,7 +618,7 @@ export default function MembershipManagement() {
       const cleanedFeatures = formData.features.filter(f => f.trim() !== '');
       
       // Xác định xem đang thêm mới hay đang sửa
-      if (showEditModal && editingMembershipId) {
+      if (editModal.isOpen && editingMembershipId) {
         // Đang chỉnh sửa gói tập hiện có
         const updateData = {
           name: formData.name,
@@ -396,48 +628,55 @@ export default function MembershipManagement() {
           features: cleanedFeatures
         };
         
-        // Gọi API cập nhật membership
-        const response = await membershipAPI.updateMembership(editingMembershipId, updateData);
+        console.log('Updating membership to API:', updateData);
         
-        if (response.status === 'success' && response.data?.membership) {
-          // Cập nhật thành công
-          const updatedMembership = response.data.membership as unknown as Membership;
+        // Gọi API cập nhật membership
+        try {
+          const response = await membershipAPI.updateMembership(editingMembershipId, updateData);
           
-          // Cập nhật state
-          const updatedMemberships = memberships.map(membership => 
-            membership.id === editingMembershipId ? updatedMembership : membership
-          );
-          
-          setMemberships(updatedMemberships);
-          
-          // Đồng thời cập nhật localStorage để cải thiện hiệu suất
-          localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
-          
-          handleCloseModal();
-          alert('Đã cập nhật gói tập thành công!');
-        } else {
-          // Fallback nếu API không thành công
-          const updatedMemberships = memberships.map(membership => {
-            if (membership.id === editingMembershipId) {
-              return {
-                ...membership,
-                name: formData.name,
-                description: formData.description,
-                duration: formData.duration,
-                price: formData.price,
-                features: cleanedFeatures
-              };
-            }
-            return membership;
-          });
-          
-          // Cập nhật state và localStorage
-          setMemberships(updatedMemberships);
-          localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
-          
-          handleCloseModal();
-          alert('Đã cập nhật gói tập thành công! (Lưu ý: Chỉ lưu cục bộ)');
+          if (response.status === 'success' && response.data?.membership) {
+            // Cập nhật thành công
+            const updatedMembership = response.data.membership as unknown as Membership;
+            
+            // Cập nhật state
+            const updatedMemberships = memberships.map(membership => 
+              membership.id === editingMembershipId ? updatedMembership : membership
+            );
+            
+            setMemberships(updatedMemberships);
+            
+            // Đồng thời cập nhật localStorage để cải thiện hiệu suất
+            localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
+            
+            editModal.close();
+            alert('Đã cập nhật gói tập thành công!');
+            return;
+          }
+        } catch (apiError) {
+          console.error('API error when updating membership:', apiError);
         }
+        
+        // Fallback nếu API không thành công
+        const updatedMemberships = memberships.map(membership => {
+          if (membership.id === editingMembershipId) {
+            return {
+              ...membership,
+              name: formData.name,
+              description: formData.description,
+              duration: formData.duration,
+              price: formData.price,
+              features: cleanedFeatures
+            };
+          }
+          return membership;
+        });
+        
+        // Cập nhật state và localStorage
+        setMemberships(updatedMemberships);
+        localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
+        
+        editModal.close();
+        alert('Đã cập nhật gói tập thành công! (Lưu ý: Chỉ lưu cục bộ, sẽ đồng bộ với cơ sở dữ liệu khi có kết nối)');
       } else {
         // Đang thêm gói tập mới
         const newMembershipData = {
@@ -447,6 +686,8 @@ export default function MembershipManagement() {
           price: formData.price,
           features: cleanedFeatures
         };
+        
+        console.log('Creating new membership in API:', newMembershipData);
         
         try {
           // Gọi API tạo membership mới
@@ -462,29 +703,28 @@ export default function MembershipManagement() {
             // Lưu vào localStorage để cải thiện hiệu suất
             localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
             
-            handleCloseModal();
-            alert('Đã thêm gói mới thành công!');
-          } else {
-            throw new Error('API call không thành công');
+            addModal.close();
+            alert('Đã thêm gói mới thành công vào cơ sở dữ liệu!');
+            return;
           }
         } catch (apiError) {
-          console.error('Error creating membership:', apiError);
-          
-          // Fallback khi API gặp lỗi - chỉ lưu vào localStorage tạm thời
-          const fallbackMembership = {
-            ...newMembershipData,
-            id: Date.now().toString() // Tạo ID tạm thời
-          };
-          
-          const updatedMemberships = [...memberships, fallbackMembership];
-          setMemberships(updatedMemberships);
-          
-          // Lưu vào localStorage
-          localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
-          
-          handleCloseModal();
-          alert('Đã thêm gói mới (chỉ lưu cục bộ). Hệ thống sẽ đồng bộ khi kết nối được với server.');
+          console.error('Error creating membership in API:', apiError);
         }
+        
+        // Fallback khi API gặp lỗi - lưu vào localStorage tạm thời
+        const fallbackMembership = {
+          ...newMembershipData,
+          id: Date.now().toString() // Tạo ID tạm thời
+        };
+        
+        const updatedMemberships = [...memberships, fallbackMembership];
+        setMemberships(updatedMemberships);
+        
+        // Lưu vào localStorage
+        localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
+        
+        addModal.close();
+        alert('Đã thêm gói mới (chỉ lưu cục bộ). Hệ thống sẽ đồng bộ khi kết nối được với server.');
       }
     } catch (error) {
       console.error('Error handling membership:', error);
@@ -497,311 +737,377 @@ export default function MembershipManagement() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 shadow-md">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="bg-indigo-600">
+        <div className="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center">
               <button
                 onClick={handleBack}
-                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-700 bg-opacity-30 border border-white border-opacity-20 rounded-md hover:bg-opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
+                className="flex items-center justify-center p-2 mr-4 text-white bg-indigo-700 rounded-full"
               >
-                <FiArrowLeft className="w-5 h-5 mr-2" />
-                Quay lại
+                <FiArrowLeft className="w-5 h-5" />
               </button>
-              <h1 className="text-2xl font-bold text-white">Membership Plans</h1>
+              <h1 className="text-2xl font-semibold text-white">Quản lý Gói Tập & Đăng Ký</h1>
             </div>
-            <button
-              onClick={handleOpenAddModal}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-700 bg-opacity-30 border border-white border-opacity-20 rounded-md hover:bg-opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
-            >
-              <FiPlus className="w-5 h-5 mr-2" />
-              Thêm gói mới
-            </button>
+            
+            <div className="flex space-x-3">
+              <button
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === 'memberships'
+                    ? 'bg-white text-indigo-700'
+                    : 'bg-indigo-700 text-white hover:bg-indigo-800'
+                }`}
+                onClick={() => handleTabChange('memberships')}
+              >
+                <FiList className="inline-block mr-2" />
+                Gói tập
+              </button>
+              
+              <button
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === 'subscriptions'
+                    ? 'bg-white text-indigo-700'
+                    : 'bg-indigo-700 text-white hover:bg-indigo-800'
+                }`}
+                onClick={() => handleTabChange('subscriptions')}
+              >
+                <FiDollarSign className="inline-block mr-2" />
+                Đơn đăng ký
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div>
-            <p className="mt-4 text-lg text-gray-600">Đang tải dữ liệu...</p>
-          </div>
-        ) : error ? (
-          <div className="text-center py-16">
-            <div className="rounded-full bg-red-100 p-3 mx-auto w-fit">
-              <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-              </svg>
+      <main className="px-4 py-8 mx-auto max-w-7xl sm:px-6 lg:px-8">
+        {/* Tab content */}
+        {activeTab === 'memberships' ? (
+          <>
+            {/* Original membership management content */}
+            <div className="flex justify-between mb-6">
+              <h2 className="text-xl font-medium text-gray-900">Danh sách gói tập</h2>
+              <button
+                onClick={handleOpenAddModal}
+                className="flex items-center px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+              >
+                <FiPlus className="mr-2" /> Thêm gói mới
+              </button>
             </div>
-            <p className="mt-4 text-lg text-red-600">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 transition-colors duration-200"
-            >
-              Thử lại
-            </button>
-          </div>
-        ) : (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <p className="text-lg text-gray-600">Tổng số {memberships.length} gói tập</p>
-              <div className="flex gap-2">
-                <button className="px-3 py-2 bg-white rounded-md shadow-sm border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-200">
-                  Sắp xếp
-                </button>
-                <button className="px-3 py-2 bg-white rounded-md shadow-sm border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-200">
-                  Lọc
+
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="w-12 h-12 border-t-2 border-b-2 border-indigo-500 rounded-full animate-spin"></div>
+              </div>
+            ) : error ? (
+              <div className="p-4 border border-red-300 rounded-md bg-red-50">
+                <p className="text-red-700">{error}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 mt-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+                >
+                  Thử lại
                 </button>
               </div>
-            </div>
-            
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {memberships.map((membership) => (
-                <div 
-                  key={membership.id} 
-                  className="overflow-hidden rounded-xl bg-white shadow-md hover:shadow-lg transition-shadow duration-300"
-                >
-                  <div className="relative">
-                    <div className={`${
-                      membership.name === 'Basic' 
-                        ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
-                        : membership.name === 'Standard'
-                        ? 'bg-gradient-to-r from-indigo-500 to-indigo-600'
-                        : 'bg-gradient-to-r from-purple-500 to-purple-600'
-                    } p-6 text-white`}>
-                      <h3 className="text-xl font-bold">{membership.name}</h3>
-                      <p className="text-3xl font-bold mt-2">{membership.price.toLocaleString('vi-VN')} ₫</p>
-                      <p className="mt-1 text-indigo-100">
-                        {membership.duration} {membership.duration === 1 ? 'tháng' : 'tháng'}
-                      </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {memberships.map((membership) => (
+                  <div key={membership.id} className="overflow-hidden bg-white rounded-lg shadow-sm hover:shadow-md transition">
+                    <div className="p-6 border-b border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-medium text-gray-900">{membership.name}</h3>
+                        <div className="flex space-x-1">
+                          <button
+                            onClick={() => handleOpenEditModal(membership)}
+                            className="p-1 text-gray-400 rounded hover:bg-gray-100 hover:text-gray-500"
+                          >
+                            <FiEdit2 className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenDeleteConfirm(membership.id)}
+                            className="p-1 text-gray-400 rounded hover:bg-gray-100 hover:text-red-500"
+                          >
+                            <FiTrash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {membership.duration} tháng
+                        </span>
+                        <span className="inline-flex items-center px-2.5 py-0.5 ml-2 text-xs font-medium bg-blue-100 rounded-full text-blue-800">
+                          {membership.price.toLocaleString('vi-VN')} đ
+                        </span>
+                      </div>
+                    </div>
+                    <div className="px-6 py-4">
+                      <p className="text-sm text-gray-500">{membership.description}</p>
                       
-                      <div className="absolute top-4 right-4 flex gap-2">
-                        <button 
-                          className="bg-white bg-opacity-20 p-2 rounded-full hover:bg-opacity-30 transition-all duration-200"
-                          onClick={() => handleOpenEditModal(membership)}
-                        >
-                          <FiEdit2 className="h-4 w-4 text-white" />
-                        </button>
-                        <button 
-                          className="bg-white bg-opacity-20 p-2 rounded-full hover:bg-opacity-30 transition-all duration-200"
-                          onClick={() => handleOpenDeleteConfirm(membership.id)}
-                        >
-                          <FiTrash2 className="h-4 w-4 text-white" />
-                        </button>
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium text-gray-900">Tính năng:</h4>
+                        <ul className="mt-2 space-y-2">
+                          {membership.features.map((feature, index) => (
+                            <li key={index} className="flex items-start">
+                              <FiCheck className="w-4 h-4 text-green-500 mt-0.5 mr-2" />
+                              <span className="text-sm text-gray-600">{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     </div>
-                    
-                    {membership.name === 'Standard' && (
-                      <div className="absolute top-0 left-0 bg-yellow-500 text-white px-4 py-1 rounded-br-lg font-medium text-sm shadow-md">
-                        Phổ biến nhất
-                      </div>
-                    )}
                   </div>
-                  
-                  <div className="p-6">
-                    <p className="mb-4 text-gray-600">{membership.description}</p>
-                    <h4 className="font-semibold mb-4 text-gray-800">Đặc quyền:</h4>
-                    <ul className="space-y-3">
-                      {membership.features.map((feature: string, index: number) => (
-                        <li key={index} className="flex items-start">
-                          <FiCheck className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                          <span className="text-gray-700">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    
-                    <div className="mt-6 pt-4 border-t border-gray-100">
-                      <button 
-                        className="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium"
-                        onClick={() => alert('Chi tiết gói ' + membership.name)}
-                      >
-                        Xem chi tiết
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Pending Subscriptions Management */}
+            <div className="mb-6">
+              <h2 className="text-xl font-medium text-gray-900">Đơn đăng ký chờ thanh toán</h2>
+              <p className="mt-1 text-gray-500">Xác nhận thanh toán hoặc hủy các đơn đăng ký gói tập.</p>
             </div>
-          </div>
+
+            {subscriptionsLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="w-12 h-12 border-t-2 border-b-2 border-indigo-500 rounded-full animate-spin"></div>
+              </div>
+            ) : subscriptionsError ? (
+              <div className="p-4 border border-red-300 rounded-md bg-red-50">
+                <p className="text-red-700">{subscriptionsError}</p>
+                <button
+                  onClick={fetchPendingSubscriptions}
+                  className="px-4 py-2 mt-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+                >
+                  Thử lại
+                </button>
+              </div>
+            ) : pendingSubscriptions.length === 0 ? (
+              <div className="p-8 text-center">
+                <div className="flex items-center justify-center w-12 h-12 mx-auto bg-indigo-100 rounded-full">
+                  <FiInfo className="w-6 h-6 text-indigo-600" />
+                </div>
+                <h3 className="mt-2 text-lg font-medium text-gray-900">Không có đơn đăng ký nào</h3>
+                <p className="mt-1 text-gray-500">Hiện tại không có đơn đăng ký nào đang chờ thanh toán.</p>
+              </div>
+            ) : (
+              <div className="overflow-hidden bg-white shadow-sm rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                        Thành viên
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                        Gói tập
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                        Thời gian
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                        Thanh toán
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                        Thời hạn còn lại
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">
+                        Hành động
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {pendingSubscriptions.map((subscription) => (
+                      <tr key={subscription.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                              <FiUser className="w-5 h-5 text-indigo-600" />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{subscription.member?.name}</div>
+                              <div className="text-sm text-gray-500">{subscription.member?.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{subscription.membership?.name}</div>
+                          <div className="text-sm text-gray-500">{subscription.membership?.duration} tháng</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">Bắt đầu: {formatDate(subscription.startDate)}</div>
+                          <div className="text-sm text-gray-500">Kết thúc: {formatDate(subscription.endDate)}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{subscription.paymentAmount?.toLocaleString('vi-VN')} đ</div>
+                          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Chờ thanh toán
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{getTimeRemaining(subscription.createdAt)}</div>
+                          <div className="text-xs text-gray-500">Đăng ký lúc: {formatDate(subscription.createdAt)}</div>
+                        </td>
+                        <td className="px-6 py-4 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => {
+                              setConfirmingSubscriptionId(subscription.id);
+                              setShowPaymentConfirm(true);
+                            }}
+                            className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 mr-2"
+                          >
+                            <FiCheck className="w-4 h-4 mr-1" /> Xác nhận
+                          </button>
+                          <button
+                            onClick={() => {
+                              setCancelingSubscriptionId(subscription.id);
+                              setShowCancelSubscription(true);
+                            }}
+                            className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-red-700 bg-white hover:bg-gray-50"
+                          >
+                            <FiX className="w-4 h-4 mr-1" /> Hủy
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </main>
 
-      {/* Modal Thêm/Sửa Gói Tập */}
-      {(showAddModal || showEditModal) && (
-        <div className="fixed z-50 inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Overlay */}
-            <div 
-              className={`fixed inset-0 bg-gray-500 transition-opacity ${isClosing ? 'bg-opacity-0' : 'bg-opacity-75'}`}
-              style={{ transitionDuration: '200ms' }}
-              aria-hidden="true" 
-              onClick={handleCloseModal}
-            ></div>
-            
-            {/* Trick để căn giữa modal */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
-            {/* Modal Panel */}
-            <div 
-              className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${isClosing ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
-              style={{ transitionDuration: '200ms' }}
-            >
-              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 sm:px-6 flex justify-between items-center">
-                <h3 className="text-lg leading-6 font-medium text-white">
-                  {showAddModal ? 'Thêm gói tập mới' : 'Chỉnh sửa gói tập'}
-                </h3>
-                <button 
-                  onClick={handleCloseModal}
-                  className="bg-transparent rounded-full p-1 inline-flex items-center justify-center text-white hover:bg-white hover:bg-opacity-20 focus:outline-none"
+      {/* Modals section */}
+      {/* Add Modal */}
+      {addModal.isOpen && (        <div className="fixed inset-0 z-50 overflow-y-auto modal-overlay">          <div className="flex items-center justify-center min-h-screen p-4 text-center">            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => !isSubmitting && handleCloseAddModal()}></div>                        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg modal-container">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium leading-6 text-gray-900">Thêm gói tập mới</h3>
+                <button
+                  type="button"
+                  onClick={handleCloseAddModal}
+                  disabled={isSubmitting}
+                  className="text-gray-400 hover:text-gray-500"
                 >
-                  <FiX className="h-5 w-5" />
+                  <FiX className="w-6 h-6" />
                 </button>
               </div>
               
               <form onSubmit={handleSubmit}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="space-y-4">
-                    {/* Tên gói */}
+                <div className="space-y-4">
+                  {/* Tên gói */}
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">Tên gói</label>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 ${formErrors.name ? 'border-red-500' : ''}`}
+                      placeholder="Ví dụ: Basic, Standard, Premium..."
+                    />
+                    {formErrors.name && <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>}
+                  </div>
+                  
+                  {/* Mô tả */}
+                  <div>
+                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">Mô tả</label>
+                    <textarea
+                      id="description"
+                      name="description"
+                      rows={3}
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 ${formErrors.description ? 'border-red-500' : ''}`}
+                      placeholder="Mô tả ngắn về gói tập..."
+                    />
+                    {formErrors.description && <p className="mt-1 text-sm text-red-600">{formErrors.description}</p>}
+                  </div>
+                  
+                  {/* Thời hạn và giá */}
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                        <FiInfo className="mr-1 text-gray-600" /> Tên gói
-                      </label>
+                      <label htmlFor="duration" className="block text-sm font-medium text-gray-700">Thời hạn (tháng)</label>
                       <input
-                        type="text"
-                        name="name"
-                        id="name"
-                        value={formData.name}
+                        type="number"
+                        id="duration"
+                        name="duration"
+                        min="1"
+                        value={formData.duration}
                         onChange={handleInputChange}
-                        className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700 ${formErrors.name ? 'border-red-500' : ''}`}
-                        placeholder="VD: Basic, Standard, Premium..."
+                        className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 ${formErrors.duration ? 'border-red-500' : ''}`}
                       />
-                      {formErrors.name && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
-                      )}
+                      {formErrors.duration && <p className="mt-1 text-sm text-red-600">{formErrors.duration}</p>}
                     </div>
-
-                    {/* Mô tả */}
+                    
                     <div>
-                      <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                        <FiInfo className="mr-1 text-gray-600" /> Mô tả
-                      </label>
-                      <textarea
-                        name="description"
-                        id="description"
-                        rows={3}
-                        value={formData.description}
+                      <label htmlFor="price" className="block text-sm font-medium text-gray-700">Giá (VNĐ)</label>
+                      <input
+                        type="number"
+                        id="price"
+                        name="price"
+                        min="0"
+                        value={formData.price}
                         onChange={handleInputChange}
-                        className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700 ${formErrors.description ? 'border-red-500' : ''}`}
-                        placeholder="VD: Gói cơ bản dành cho người mới bắt đầu..."
+                        className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 ${formErrors.price ? 'border-red-500' : ''}`}
                       />
-                      {formErrors.description && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.description}</p>
-                      )}
+                      {formErrors.price && <p className="mt-1 text-sm text-red-600">{formErrors.price}</p>}
                     </div>
-
-                    {/* Thời hạn và giá cả */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                          <FiClock className="mr-1 text-gray-600" /> Thời hạn (tháng)
-                        </label>
+                  </div>
+                  
+                  {/* Tính năng */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tính năng</label>
+                    {formData.features.map((feature, index) => (
+                      <div key={index} className="flex mb-2">
                         <input
-                          type="number"
-                          name="duration"
-                          id="duration"
-                          min="1"
-                          value={formData.duration}
-                          onChange={handleInputChange}
-                          className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700 ${formErrors.duration ? 'border-red-500' : ''}`}
+                          type="text"
+                          value={feature}
+                          onChange={(e) => handleFeatureChange(index, e.target.value)}
+                          className="flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900"
+                          placeholder={`Tính năng ${index + 1}`}
                         />
-                        {formErrors.duration && (
-                          <p className="mt-1 text-sm text-red-600">{formErrors.duration}</p>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                          <FiDollarSign className="mr-1 text-gray-600" /> Giá (VNĐ)
-                        </label>
-                        <input
-                          type="number"
-                          name="price"
-                          id="price"
-                          min="0"
-                          step="10000"
-                          value={formData.price}
-                          onChange={handleInputChange}
-                          className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700 ${formErrors.price ? 'border-red-500' : ''}`}
-                        />
-                        {formErrors.price && (
-                          <p className="mt-1 text-sm text-red-600">{formErrors.price}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Tính năng */}
-                    <div>
-                      <label htmlFor="features" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                        <FiList className="mr-1 text-gray-600" /> Tính năng
-                      </label>
-                      
-                      {formErrors.features && (
-                        <p className="mt-1 text-sm text-red-600 mb-2">{formErrors.features}</p>
-                      )}
-                      
-                      {formData.features.map((feature, index) => (
-                        <div key={index} className="flex items-center mt-2">
-                          <input
-                            type="text"
-                            value={feature}
-                            onChange={(e) => handleFeatureChange(index, e.target.value)}
-                            className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700"
-                            placeholder="VD: Truy cập phòng tập không giới hạn"
-                          />
+                        {formData.features.length > 1 && (
                           <button
                             type="button"
                             onClick={() => handleRemoveFeature(index)}
-                            className="ml-2 p-1 rounded-full text-gray-400 hover:text-gray-600 focus:outline-none"
-                            disabled={formData.features.length <= 1}
+                            className="ml-2 p-2 text-red-600 hover:text-red-800"
                           >
-                            <FiX className="h-5 w-5" />
+                            <FiTrash2 className="w-4 h-4" />
                           </button>
-                        </div>
-                      ))}
-                      
-                      <button
-                        type="button"
-                        onClick={handleAddFeature}
-                        className="mt-3 inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                      >
-                        <FiPlus className="mr-1" /> Thêm tính năng
-                      </button>
-                    </div>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={handleAddFeature}
+                      className="mt-2 inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+                    >
+                      <FiPlus className="w-4 h-4 mr-1" /> Thêm tính năng
+                    </button>
                   </div>
                 </div>
                 
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <div className="mt-6 sm:flex sm:flex-row-reverse">
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    className="inline-flex justify-center w-full px-4 py-2 text-base font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
                   >
                     {isSubmitting ? (
                       <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 mr-2 -ml-1 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                         Đang xử lý...
                       </>
-                    ) : showEditModal ? 'Cập nhật' : 'Thêm gói'}
+                    ) : 'Thêm gói tập'}
                   </button>
                   <button
                     type="button"
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                    onClick={handleCloseModal}
+                    onClick={handleCloseAddModal}
                     disabled={isSubmitting}
+                    className="inline-flex justify-center w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm"
                   >
                     Hủy
                   </button>
@@ -811,56 +1117,276 @@ export default function MembershipManagement() {
           </div>
         </div>
       )}
-
-      {/* Dialog xác nhận xóa */}
-      {showDeleteConfirm && (
-        <div className="fixed z-50 inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Overlay */}
-            <div 
-              className={`fixed inset-0 bg-gray-500 transition-opacity ${isClosing ? 'bg-opacity-0' : 'bg-opacity-75'}`}
-              style={{ transitionDuration: '200ms' }}
-              aria-hidden="true" 
-              onClick={handleCloseDeleteConfirm}
-            ></div>
-            
-            {/* Trick để căn giữa dialog */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
-            {/* Dialog Panel */}
-            <div 
-              className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${isClosing ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
-              style={{ transitionDuration: '200ms' }}
-            >
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <FiTrash2 className="h-6 w-6 text-red-600" />
+      
+      {/* Edit Modal */}
+      {editModal.isOpen && (        <div className="fixed inset-0 z-50 overflow-y-auto modal-overlay">          <div className="flex items-center justify-center min-h-screen p-4 text-center">            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => !isSubmitting && handleCloseEditModal()}></div>                        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg modal-container">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium leading-6 text-gray-900">Chỉnh sửa gói tập</h3>
+                <button
+                  type="button"
+                  onClick={handleCloseEditModal}
+                  disabled={isSubmitting}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <FiX className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmit}>
+                <div className="space-y-4">
+                  {/* Tên gói */}
+                  <div>
+                    <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700">Tên gói</label>
+                    <input
+                      type="text"
+                      id="edit-name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 ${formErrors.name ? 'border-red-500' : ''}`}
+                      placeholder="Ví dụ: Basic, Standard, Premium..."
+                    />
+                    {formErrors.name && <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>}
                   </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">Xóa gói tập</h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
-                        Bạn có chắc chắn muốn xóa gói tập này? Thao tác này không thể hoàn tác.
-                      </p>
+                  
+                  {/* Mô tả */}
+                  <div>
+                    <label htmlFor="edit-description" className="block text-sm font-medium text-gray-700">Mô tả</label>
+                    <textarea
+                      id="edit-description"
+                      name="description"
+                      rows={3}
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 ${formErrors.description ? 'border-red-500' : ''}`}
+                      placeholder="Mô tả ngắn về gói tập..."
+                    />
+                    {formErrors.description && <p className="mt-1 text-sm text-red-600">{formErrors.description}</p>}
+                  </div>
+                  
+                  {/* Thời hạn và giá */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="edit-duration" className="block text-sm font-medium text-gray-700">Thời hạn (tháng)</label>
+                      <input
+                        type="number"
+                        id="edit-duration"
+                        name="duration"
+                        min="1"
+                        value={formData.duration}
+                        onChange={handleInputChange}
+                        className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 ${formErrors.duration ? 'border-red-500' : ''}`}
+                      />
+                      {formErrors.duration && <p className="mt-1 text-sm text-red-600">{formErrors.duration}</p>}
                     </div>
+                    
+                    <div>
+                      <label htmlFor="edit-price" className="block text-sm font-medium text-gray-700">Giá (VNĐ)</label>
+                      <input
+                        type="number"
+                        id="edit-price"
+                        name="price"
+                        min="0"
+                        value={formData.price}
+                        onChange={handleInputChange}
+                        className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 ${formErrors.price ? 'border-red-500' : ''}`}
+                      />
+                      {formErrors.price && <p className="mt-1 text-sm text-red-600">{formErrors.price}</p>}
+                    </div>
+                  </div>
+                  
+                  {/* Tính năng */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tính năng</label>
+                    {formData.features.map((feature, index) => (
+                      <div key={index} className="flex mb-2">
+                        <input
+                          type="text"
+                          value={feature}
+                          onChange={(e) => handleFeatureChange(index, e.target.value)}
+                          className="flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900"
+                          placeholder={`Tính năng ${index + 1}`}
+                        />
+                        {formData.features.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFeature(index)}
+                            className="ml-2 p-2 text-red-600 hover:text-red-800"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={handleAddFeature}
+                      className="mt-2 inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+                    >
+                      <FiPlus className="w-4 h-4 mr-1" /> Thêm tính năng
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="mt-6 sm:flex sm:flex-row-reverse">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="inline-flex justify-center w-full px-4 py-2 text-base font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <svg className="w-4 h-4 mr-2 -ml-1 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Đang xử lý...
+                      </>
+                    ) : 'Lưu thay đổi'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCloseEditModal}
+                    disabled={isSubmitting}
+                    className="inline-flex justify-center w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Confirm Modal */}
+      {deleteModal.isOpen && (        <div className="fixed inset-0 z-50 overflow-y-auto modal-overlay">          <div className="flex items-center justify-center min-h-screen p-4 text-center">            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={handleCloseDeleteConfirm}></div>                        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg modal-container">
+              <div className="sm:flex sm:items-start">
+                <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 mx-auto bg-red-100 rounded-full sm:mx-0 sm:h-10 sm:w-10">
+                  <FiTrash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                  <h3 className="text-lg font-medium leading-6 text-gray-900">Xóa gói tập</h3>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Bạn có chắc chắn muốn xóa gói tập này? 
+                      Thao tác này không thể hoàn tác và có thể ảnh hưởng đến các thành viên đã đăng ký gói này.
+                    </p>
                   </div>
                 </div>
               </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button 
-                  type="button" 
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
                   onClick={handleDeleteMembership}
+                  className="inline-flex justify-center w-full px-4 py-2 text-base font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Xóa
                 </button>
-                <button 
-                  type="button" 
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                <button
+                  type="button"
                   onClick={handleCloseDeleteConfirm}
+                  className="inline-flex justify-center w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm"
                 >
                   Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Payment Modal */}
+      {showPaymentConfirm && (        <div className="fixed inset-0 z-50 overflow-y-auto modal-overlay">          <div className="flex items-center justify-center min-h-screen p-4 text-center">            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => !paymentProcessing && setShowPaymentConfirm(false)}></div>                        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg modal-container">
+              <div className="sm:flex sm:items-start">
+                <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 mx-auto bg-green-100 rounded-full sm:mx-0 sm:h-10 sm:w-10">
+                  <FiCheck className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                  <h3 className="text-lg font-medium leading-6 text-gray-900">Xác nhận thanh toán</h3>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Bạn có chắc chắn muốn xác nhận thanh toán cho đơn đăng ký này? 
+                      Sau khi xác nhận, gói tập sẽ được kích hoạt cho thành viên.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  disabled={paymentProcessing}
+                  onClick={handleConfirmPayment}
+                  className="inline-flex justify-center w-full px-4 py-2 text-base font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  {paymentProcessing ? (
+                    <>
+                      <svg className="w-4 h-4 mr-2 -ml-1 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    'Xác nhận'
+                  )}
+                </button>
+                <button
+                  type="button"
+                  disabled={paymentProcessing}
+                  onClick={() => setShowPaymentConfirm(false)}
+                  className="inline-flex justify-center w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Subscription Modal */}
+      {showCancelSubscription && (        <div className="fixed inset-0 z-50 overflow-y-auto modal-overlay">          <div className="flex items-center justify-center min-h-screen p-4 text-center">            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => !paymentProcessing && setShowCancelSubscription(false)}></div>                        <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg modal-container">
+              <div className="sm:flex sm:items-start">
+                <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 mx-auto bg-red-100 rounded-full sm:mx-0 sm:h-10 sm:w-10">
+                  <FiX className="w-6 h-6 text-red-600" />
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                  <h3 className="text-lg font-medium leading-6 text-gray-900">Hủy đơn đăng ký</h3>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Bạn có chắc chắn muốn hủy đơn đăng ký này? 
+                      Thao tác này không thể hoàn tác.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  disabled={paymentProcessing}
+                  onClick={handleCancelSubscription}
+                  className="inline-flex justify-center w-full px-4 py-2 text-base font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  {paymentProcessing ? (
+                    <>
+                      <svg className="w-4 h-4 mr-2 -ml-1 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    'Hủy đơn'
+                  )}
+                </button>
+                <button
+                  type="button"
+                  disabled={paymentProcessing}
+                  onClick={() => setShowCancelSubscription(false)}
+                  className="inline-flex justify-center w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm"
+                >
+                  Quay lại
                 </button>
               </div>
             </div>

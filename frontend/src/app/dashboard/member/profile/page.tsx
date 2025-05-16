@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { userAPI } from '@/services/api';
 import { motion } from 'framer-motion';
 import { FiUser, FiMail, FiPhone, FiCalendar, FiMapPin, FiInfo, FiEdit, FiArrowLeft, FiSave, FiX, FiLock } from 'react-icons/fi';
+import { ApiResponse } from '@/types';
 
 interface User {
   id: string;
@@ -195,35 +196,43 @@ export default function MemberProfile() {
     setError(null);
     
     try {
-      // In a real app, you'd call the API to update the user profile
-      // const response = await userAPI.updateProfile(userData!.id, formData);
-      
-      // For the demo, we'll simulate a successful response
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const updatedUser = {
-        ...userData!,
+      // Call the actual API to update the user profile
+      const response = await userAPI.updateUser(userData!.id, {
         name: formData.name,
         email: formData.email,
-        phone: formData.phone,
-        address: formData.address,
-        dateOfBirth: formData.dateOfBirth,
-      };
+        phone: formData.phone || null,
+        address: formData.address || null,
+        dateOfBirth: formData.dateOfBirth || null,
+      });
       
-      setUserData(updatedUser);
-      
-      // Simulate refreshing user data in auth context
-      if (refreshUserData) {
-        await refreshUserData();
+      if (response && response.status === 'success' && response.data && 'user' in response.data) {
+        const user = response.data.user as any;
+        const updatedUser = {
+          ...userData!,
+          name: user.name || userData!.name,
+          email: user.email || userData!.email,
+          phone: user.phone || userData!.phone,
+          address: user.address || userData!.address,
+          dateOfBirth: user.dateOfBirth || userData!.dateOfBirth,
+        };
+        
+        setUserData(updatedUser);
+        
+        // Refresh user data in auth context
+        if (refreshUserData) {
+          await refreshUserData();
+        }
+        
+        setIsEditing(false);
+        setNotification({ type: 'success', message: 'Profile updated successfully' });
+        
+        // Auto-clear notification after 3 seconds
+        setTimeout(() => {
+          setNotification(null);
+        }, 3000);
+      } else {
+        throw new Error(response?.message || 'Failed to update profile');
       }
-      
-      setIsEditing(false);
-      setNotification({ type: 'success', message: 'Profile updated successfully' });
-      
-      // Auto-clear notification after 3 seconds
-      setTimeout(() => {
-        setNotification(null);
-      }, 3000);
     } catch (err) {
       console.error('Error updating profile:', err);
       setError('Failed to update profile. Please try again.');
@@ -367,7 +376,7 @@ export default function MemberProfile() {
                           name="name"
                           value={formData.name}
                           onChange={handleInputChange}
-                          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 ${
                             formErrors.name ? 'border-red-500' : ''
                           }`}
                         />
@@ -386,7 +395,7 @@ export default function MemberProfile() {
                           name="email"
                           value={formData.email}
                           onChange={handleInputChange}
-                          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 ${
                             formErrors.email ? 'border-red-500' : ''
                           }`}
                         />
@@ -405,7 +414,7 @@ export default function MemberProfile() {
                           name="phone"
                           value={formData.phone}
                           onChange={handleInputChange}
-                          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 ${
                             formErrors.phone ? 'border-red-500' : ''
                           }`}
                           placeholder="Your phone number"
@@ -425,7 +434,7 @@ export default function MemberProfile() {
                           rows={3}
                           value={formData.address}
                           onChange={handleInputChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900"
                           placeholder="Your address"
                         />
                       </div>
@@ -440,7 +449,7 @@ export default function MemberProfile() {
                           name="dateOfBirth"
                           value={formData.dateOfBirth}
                           onChange={handleInputChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900"
                         />
                       </div>
                       
@@ -471,7 +480,7 @@ export default function MemberProfile() {
                                 name="currentPassword"
                                 value={formData.currentPassword}
                                 onChange={handleInputChange}
-                                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 ${
                                   formErrors.currentPassword ? 'border-red-500' : ''
                                 }`}
                               />
@@ -490,7 +499,7 @@ export default function MemberProfile() {
                                 name="newPassword"
                                 value={formData.newPassword}
                                 onChange={handleInputChange}
-                                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 ${
                                   formErrors.newPassword ? 'border-red-500' : ''
                                 }`}
                               />
@@ -509,7 +518,7 @@ export default function MemberProfile() {
                                 name="confirmPassword"
                                 value={formData.confirmPassword}
                                 onChange={handleInputChange}
-                                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 ${
                                   formErrors.confirmPassword ? 'border-red-500' : ''
                                 }`}
                               />

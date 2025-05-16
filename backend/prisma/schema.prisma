@@ -33,6 +33,8 @@ model User {
   attendances   Attendance[]   @relation("MemberAttendances")
   createdSubscriptions Subscription[] @relation("SubscriptionCreatedBy")
   createdAttendances   Attendance[]   @relation("AttendanceCreatedBy")
+  createdEquipment     Equipment[]    @relation("EquipmentCreatedBy")
+  createdMaintenanceLogs MaintenanceLog[] @relation("MaintenanceLogCreatedBy")
 }
 
 model Membership {
@@ -85,4 +87,48 @@ model Attendance {
   // Relations
   member       User      @relation("MemberAttendances", fields: [memberId], references: [id])
   createdBy    User?     @relation("AttendanceCreatedBy", fields: [createdById], references: [id])
+}
+
+model Equipment {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  description   String
+  category      String          // e.g., "Cardio", "Strength", "Flexibility"
+  purchaseDate  DateTime
+  purchasePrice Float
+  manufacturer  String
+  model         String?
+  serialNumber  String?
+  status        String          @default("available") // available, in-use, maintenance, retired
+  location      String?         // e.g., "Main floor", "Weight room", etc.
+  lastMaintenance DateTime?
+  nextMaintenance DateTime?
+  image         String?         @default("default-equipment.jpg")
+  notes         String?
+  createdById   String?         @db.ObjectId
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Relations
+  maintenanceLogs MaintenanceLog[] @relation("EquipmentMaintenance")
+  createdBy       User?            @relation("EquipmentCreatedBy", fields: [createdById], references: [id])
+}
+
+model MaintenanceLog {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  equipmentId   String    @db.ObjectId
+  maintenanceDate DateTime @default(now())
+  maintenanceType String   // e.g., "Routine", "Repair", "Inspection"
+  description   String
+  cost          Float?
+  technician    String?
+  parts         String?
+  status        String    @default("completed") // scheduled, in-progress, completed, cancelled
+  createdById   String?   @db.ObjectId
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  equipment     Equipment @relation("EquipmentMaintenance", fields: [equipmentId], references: [id])
+  createdBy     User?     @relation("MaintenanceLogCreatedBy", fields: [createdById], references: [id])
 }

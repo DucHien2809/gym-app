@@ -15,11 +15,12 @@ export default function AdminDashboardLayout({
   const { auth, logout } = useAuth();
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard/admin', current: pathname === '/dashboard/admin' },
-    { name: 'Users', href: '/dashboard/admin/users', current: pathname === '/dashboard/admin/users' },
-    { name: 'Memberships', href: '/dashboard/admin/memberships', current: pathname === '/dashboard/admin/memberships' },
-    { name: 'Subscriptions', href: '/dashboard/admin/subscriptions', current: pathname === '/dashboard/admin/subscriptions' },
-    { name: 'Attendance', href: '/dashboard/admin/attendance', current: pathname === '/dashboard/admin/attendance' },
+    { name: 'Bảng điều khiển', href: '/dashboard/admin', current: pathname === '/dashboard/admin' },
+    { name: 'Người dùng', href: '/dashboard/admin/users', current: pathname === '/dashboard/admin/users' },
+    { name: 'Gói tập', href: '/dashboard/admin/memberships', current: pathname === '/dashboard/admin/memberships' },
+    { name: 'Đăng ký', href: '/dashboard/admin/subscriptions', current: pathname === '/dashboard/admin/subscriptions' },
+    { name: 'Điểm danh', href: '/dashboard/admin/attendance', current: pathname === '/dashboard/admin/attendance' },
+    { name: 'Thiết bị', href: '/dashboard/admin/equipment', current: pathname === '/dashboard/admin/equipment' },
   ];
 
   return (
@@ -29,7 +30,7 @@ export default function AdminDashboardLayout({
           <nav className="flex items-center justify-between p-4 lg:px-8" aria-label="Global">
             <div className="flex lg:flex-1">
               <Link href="/" className="-m-1.5 p-1.5 text-white font-bold text-xl">
-                GYM MANAGEMENT
+                QUẢN LÝ PHÒNG TẬP
               </Link>
             </div>
             <div className="flex gap-x-6">
@@ -53,13 +54,13 @@ export default function AdminDashboardLayout({
                 onClick={logout}
                 className="rounded-md bg-indigo-800 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-900"
               >
-                Logout
+                Đăng xuất
               </button>
             </div>
           </nav>
         </div>
 
-        {/* Page content */}
+        {/* Nội dung trang */}
         <main className="py-6">{children}</main>
       </div>
     </ProtectedRoute>

@@ -9,7 +9,7 @@ import { GiWeightLiftingUp } from 'react-icons/gi';
 export default function Home() {
   const { auth, logout } = useAuth();
 
-  // Animation variants
+  // Biến thể hoạt ảnh
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
     visible: { 
@@ -21,7 +21,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Header/Navigation */}
+      {/* Đầu trang/Điều hướng */}
       <header className="bg-white/90 backdrop-blur-sm shadow-md sticky top-0 z-50 border-b border-gray-100">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-3 group">
@@ -31,7 +31,7 @@ export default function Home() {
             <GiWeightLiftingUp className="h-8 w-8 text-indigo-600" />
               </div>
             </div>
-            <h1 className="text-2xl font-bold gradient-text group-hover:scale-105 transition-transform duration-300">GYM MANAGEMENT</h1>
+            <h1 className="text-2xl font-bold gradient-text group-hover:scale-105 transition-transform duration-300">QUẢN LÝ PHÒNG TẬP</h1>
           </Link>
           
           <nav className="hidden md:block">
@@ -65,7 +65,7 @@ export default function Home() {
                       }
                       className="text-gray-800 hover:text-indigo-600 font-medium flex items-center transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 hover:after:w-full after:bg-indigo-600 after:transition-all after:duration-300"
                     >
-                      <FiBarChart2 className="mr-2" /> Dashboard
+                      <FiBarChart2 className="mr-2" /> Bảng điều khiển
                     </Link>
                   </li>
                   <li>
@@ -100,7 +100,7 @@ export default function Home() {
             </ul>
           </nav>
           
-          {/* Mobile Menu Button */}
+          {/* Nút Menu cho Thiết bị Di động */}
           <button className="md:hidden relative p-2 rounded-full text-indigo-600 hover:bg-indigo-50 transition-colors duration-200">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -109,19 +109,19 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Phần Giới thiệu */}
       <section className="relative py-20 lg:py-28 overflow-hidden">
-        {/* Modern gradient background */}
+        {/* Nền gradient hiện đại */}
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-violet-800"></div>
         
-        {/* Animated particles/mesh background */}
+        {/* Nền hiệu ứng hạt/lưới hoạt ảnh */}
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-0 left-0 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
           <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
           <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
         </div>
         
-        {/* Mesh grid overlay */}
+        {/* Lớp phủ lưới */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptMC0zMHY2aDZ2LTZoLTZ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30"></div>
         
         <div className="container mx-auto px-4 relative">
@@ -181,7 +181,7 @@ export default function Home() {
                   </motion.div>
                 </div>
                 
-                {/* Trust indicators */}
+                {/* Chỉ số tin cậy */}
                 <div className="flex items-center space-x-6 text-indigo-200">
                   <div className="flex items-center">
                     <div className="flex -space-x-2">
@@ -207,12 +207,12 @@ export default function Home() {
                 transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
               >
                 <div className="relative">
-                  {/* Modern floating dashboard mockup */}
+                  {/* Mô phỏng bảng điều khiển nổi hiện đại */}
                   <div className="w-full max-w-md mx-auto">
                     <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-indigo-950 to-gray-900 p-1">
                       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 opacity-10"></div>
                       
-                      {/* Browser-like top bar */}
+                      {/* Thanh trên kiểu trình duyệt */}
                       <div className="bg-gray-800 rounded-t-xl px-4 py-2 flex items-center space-x-2">
                         <div className="flex space-x-1">
                           <div className="w-3 h-3 rounded-full bg-red-500"></div>
@@ -220,20 +220,20 @@ export default function Home() {
                           <div className="w-3 h-3 rounded-full bg-green-500"></div>
                         </div>
                         <div className="flex-1 bg-gray-700 rounded-md text-xs text-gray-400 py-0.5 px-3 text-center">
-                          Dashboard - Gym Management
+                          Bảng điều khiển - Quản lý Phòng tập
                         </div>
                       </div>
                       
                       <div className="rounded-b-xl overflow-hidden">
                         <div className="p-5 bg-gray-900 text-white">
                           <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-white">Dashboard</h3>
+                            <h3 className="text-xl font-bold text-white">Bảng điều khiển</h3>
                             <div className="bg-indigo-600 bg-opacity-30 text-indigo-300 text-xs px-3 py-1 rounded-full">
                               Quản trị viên
                             </div>
                           </div>
                           
-                          {/* Dashboard preview items */}
+                          {/* Các mục xem trước bảng điều khiển */}
                           <div className="space-y-4 mb-6">
                             <div className="bg-gray-800 bg-opacity-50 p-4 rounded-xl border border-gray-700">
                               <div className="flex justify-between items-center mb-3">
@@ -519,6 +519,71 @@ export default function Home() {
                 <Link 
                   href="/dashboard/attendance" 
                   className="text-blue-600 font-medium flex items-center group-hover:text-blue-700 group-hover:font-semibold transition-all"
+                >
+                  Xem chi tiết 
+                  <svg className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </Link>
+              </div>
+            </motion.div>
+
+            {/* Feature 4 - Quản lý thiết bị */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              whileHover={{ y: -8, transition: { duration: 0.3 } }}
+              className="bg-white p-8 rounded-2xl shadow-xl hover:shadow-2xl border border-gray-100 transition-all duration-300 relative group overflow-hidden"
+            >
+              {/* Animated gradient border */}
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl opacity-0 group-hover:opacity-100 blur-sm transition-all duration-500"></div>
+              <div className="absolute inset-0 bg-white rounded-2xl z-10"></div>
+              
+              <div className="relative z-20">
+                <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-8 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                </div>
+                
+                <h3 className="text-xl font-bold mb-4 text-gray-900 group-hover:text-green-600 transition-colors">Quản lý thiết bị</h3>
+                
+                <p className="text-gray-600 mb-5 leading-relaxed">
+                  Theo dõi tình trạng, lịch bảo trì và thống kê sử dụng của từng thiết bị trong phòng gym. Tối ưu hóa hiệu suất và tuổi thọ thiết bị.
+                </p>
+                
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-center">
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 flex items-center justify-center mr-3">
+                      <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-gray-700 text-sm">Quản lý danh mục thiết bị</span>
+                  </li>
+                  <li className="flex items-center">
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 flex items-center justify-center mr-3">
+                      <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-gray-700 text-sm">Lịch bảo trì tự động</span>
+                  </li>
+                  <li className="flex items-center">
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 flex items-center justify-center mr-3">
+                      <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-gray-700 text-sm">Thống kê mức độ sử dụng</span>
+                  </li>
+                </ul>
+                
+                <Link 
+                  href="/dashboard/equipment" 
+                  className="text-green-600 font-medium flex items-center group-hover:text-green-700 group-hover:font-semibold transition-all"
                 >
                   Xem chi tiết 
                   <svg className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none">

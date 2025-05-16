@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { userAPI } from '@/services/api';
@@ -43,14 +44,28 @@ export default function UserManagement() {
   // State cho modal chi tiết
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
+  const [isBrowser, setIsBrowser] = useState(false);
 
-  // Tự động đóng modal nếu selectedUser bị null khi showModal đang mở
+  // Set isBrowser to true when component mounts
   useEffect(() => {
-    if (showModal && !selectedUser) {
-      setShowModal(false);
+    setIsBrowser(true);
+  }, []);
+
+  // Effect to ensure modal is properly handled
+  useEffect(() => {
+    if (showModal) {
+      // Prevent body scrolling when modal is open
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Re-enable scrolling when modal is closed
+      document.body.style.overflow = 'unset';
     }
-  }, [showModal, selectedUser]);
+    
+    // Clean up function
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showModal]);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -165,16 +180,10 @@ export default function UserManagement() {
 
   // Đóng modal và reset selectedUser
   const handleCloseModal = () => {
-    setIsClosing(true);
-    // Thêm một hiệu ứng đóng trước khi thực sự xóa dữ liệu
+    setShowModal(false);
     setTimeout(() => {
-      setShowModal(false);
-      setIsClosing(false);
-      // Đợi animation đóng hoàn tất trước khi xóa dữ liệu
-      setTimeout(() => {
-        setSelectedUser(null);
-      }, 100);
-    }, 200);
+      setSelectedUser(null);
+    }, 100);
   };
 
   // Style tùy chỉnh cho menu chọn vai trò
@@ -374,8 +383,16 @@ export default function UserManagement() {
                             <button
                               onClick={() => {
                                 console.log('Xem chi tiết user:', user);
+                                console.log('Current state before update - showModal:', showModal, 'selectedUser:', selectedUser);
                                 setSelectedUser(user);
                                 setShowModal(true);
+                                console.log('Modal should be visible now, showModal:', true, 'selectedUser:', user);
+                                console.log('isBrowser:', isBrowser);
+                                
+                                // Force a re-render to ensure the modal shows up
+                                setTimeout(() => {
+                                  console.log('After timeout - showModal:', true, 'selectedUser:', user, 'isBrowser:', isBrowser);
+                                }, 100);
                               }}
                               className="inline-flex items-center px-2.5 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200"
                             >
@@ -515,119 +532,116 @@ export default function UserManagement() {
         )}
       </main>
 
-      {/* User Detail Modal */}
-      {showModal && selectedUser && (
-        <div className="fixed z-50 inset-0 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Overlay */}
-            <div 
-              className={`fixed inset-0 bg-gray-500 transition-opacity ${isClosing ? 'bg-opacity-0' : 'bg-opacity-75'}`}
-              style={{ transitionDuration: '200ms' }}
-              aria-hidden="true" 
-              onClick={handleCloseModal}
-            ></div>
-            {/* Trick to center modal content */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div 
-              className={`inline-block align-bottom bg-white border-t-4 border-indigo-500 text-black min-h-[200px] min-w-[350px] p-0 rounded-lg text-left overflow-visible shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full z-50 ${isClosing ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
-              style={{ transitionDuration: '200ms' }}
-            >
-              <div className="absolute top-0 right-0 p-2">
+      {/* User Detail Modal - Using Portal */}
+      {showModal && selectedUser && isBrowser && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-y-auto overflow-x-hidden flex justify-center items-center">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" 
+            onClick={handleCloseModal}
+          ></div>
+          
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 z-[10000] transform transition-all">
+            {/* Modal Header with gradient */}
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="h-16 w-16 rounded-full bg-white flex items-center justify-center mr-4">
+                    <span className="text-indigo-600 text-xl font-bold">
+                      {selectedUser.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <h3 className="text-xl leading-6 font-bold text-white">
+                    {selectedUser.name}
+                  </h3>
+                </div>
                 <button 
                   onClick={handleCloseModal}
-                  className="bg-white rounded-full p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 transition-all duration-200"
+                  className="bg-white/20 hover:bg-white/30 rounded-full p-2 inline-flex items-center justify-center text-white transition-colors"
                 >
-                  <span className="sr-only">Đóng</span>
-                  <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-              
-              {selectedUser ? (
-                <>
-                  <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 rounded-t-lg">
-                    <div className="flex items-center">
-                      <div className="h-16 w-16 rounded-full bg-white flex items-center justify-center mr-4">
-                        <span className="text-indigo-600 text-xl font-bold">
-                          {selectedUser.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <h3 className="text-xl leading-6 font-bold text-white">
-                        {selectedUser.name}
-                      </h3>
-                    </div>
+            </div>
+            
+            {/* Modal Body */}
+            <div className="bg-white p-6">
+              <div className="grid grid-cols-1 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <p className="mt-1 text-base text-black font-semibold bg-gray-50 p-2 rounded-md overflow-x-auto break-all">{selectedUser.email}</p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Vai trò</label>
+                    <p className={`mt-1 px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${
+                        selectedUser.role === 'admin' 
+                          ? 'bg-purple-100 text-purple-800'
+                          : selectedUser.role === 'trainer'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                      {selectedUser.role === 'admin' 
+                        ? 'Admin'
+                        : selectedUser.role === 'trainer'
+                        ? 'Huấn luyện viên'
+                        : 'Thành viên'}
+                    </p>
                   </div>
-                  <div className="bg-white p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
-                        <p className="mt-1 text-base text-black font-semibold bg-gray-50 p-2 rounded-md">{selectedUser.email}</p>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Vai trò</label>
-                        <p className={`mt-1 px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${
-                            selectedUser.role === 'admin' 
-                              ? 'bg-purple-100 text-purple-800'
-                              : selectedUser.role === 'trainer'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                          {selectedUser.role === 'admin' 
-                            ? 'Admin'
-                            : selectedUser.role === 'trainer'
-                            ? 'Huấn luyện viên'
-                            : 'Thành viên'}
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Trạng thái</label>
-                        <p className={`mt-1 px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${
-                            selectedUser.active 
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                          {selectedUser.active ? 'Đang hoạt động' : 'Đã khóa'}
-                        </p>
-                      </div>
-                      {selectedUser.phone && (
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">Số điện thoại</label>
-                          <p className="mt-1 text-base text-black font-semibold bg-gray-50 p-2 rounded-md">{selectedUser.phone}</p>
-                        </div>
-                      )}
-                      {selectedUser.address && (
-                        <div className="space-y-2 col-span-1 md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700">Địa chỉ</label>
-                          <p className="mt-1 text-base text-black font-semibold bg-gray-50 p-2 rounded-md">{selectedUser.address}</p>
-                        </div>
-                      )}
-                      {selectedUser.dateOfBirth && (
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">Ngày sinh</label>
-                          <p className="mt-1 text-base text-black font-semibold bg-gray-50 p-2 rounded-md">
-                            {new Date(selectedUser.dateOfBirth).toLocaleDateString('vi-VN')}
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Trạng thái</label>
+                    <p className={`mt-1 px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${
+                        selectedUser.active 
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                      {selectedUser.active ? 'Đang hoạt động' : 'Đã khóa'}
+                    </p>
                   </div>
-                  <div className="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleCloseModal}
-                      className="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 sm:w-auto sm:text-sm"
-                    >
-                      Đóng
-                    </button>
+                </div>
+                
+                {selectedUser.phone && (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Số điện thoại</label>
+                    <p className="mt-1 text-base text-black font-semibold bg-gray-50 p-2 rounded-md">{selectedUser.phone}</p>
                   </div>
-                </>
-              ) : (
-                <div className="p-8 text-center text-gray-500">Không có dữ liệu người dùng.</div>
-              )}
+                )}
+                
+                {selectedUser.dateOfBirth && (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Ngày sinh</label>
+                    <p className="mt-1 text-base text-black font-semibold bg-gray-50 p-2 rounded-md">
+                      {new Date(selectedUser.dateOfBirth).toLocaleDateString('vi-VN')}
+                    </p>
+                  </div>
+                )}
+                
+                {selectedUser.address && (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">Địa chỉ</label>
+                    <p className="mt-1 text-base text-black font-semibold bg-gray-50 p-2 rounded-md">{selectedUser.address}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end">
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 sm:w-auto sm:text-sm"
+              >
+                Đóng
+              </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

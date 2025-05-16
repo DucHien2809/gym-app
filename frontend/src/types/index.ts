@@ -85,6 +85,48 @@ export interface Attendance {
   createdAt: string;
 }
 
+// Equipment types
+export interface Equipment {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  purchaseDate: string;
+  purchasePrice: number;
+  manufacturer: string;
+  model?: string;
+  serialNumber?: string;
+  status: 'available' | 'in-use' | 'maintenance' | 'retired';
+  location?: string;
+  lastMaintenance?: string;
+  nextMaintenance?: string;
+  image?: string;
+  notes?: string;
+  createdById?: string;
+  createdBy?: User;
+  createdAt: string;
+  updatedAt: string;
+  maintenanceLogs?: MaintenanceLog[];
+}
+
+// Maintenance Log types
+export interface MaintenanceLog {
+  id: string;
+  equipmentId: string;
+  equipment?: Equipment;
+  maintenanceDate: string;
+  maintenanceType: string;
+  description: string;
+  cost?: number;
+  technician?: string;
+  parts?: string;
+  status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
+  createdById?: string;
+  createdBy?: User;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // API Response types
 export interface ApiResponse<T> {
   status: 'success' | 'fail' | 'error';

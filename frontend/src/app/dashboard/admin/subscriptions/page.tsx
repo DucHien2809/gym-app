@@ -172,6 +172,8 @@ export default function SubscriptionManagement() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [isConfirmPaymentModalOpen, setIsConfirmPaymentModalOpen] = useState(false);
   
   // States cho modal thêm/sửa đăng ký
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -578,6 +580,104 @@ export default function SubscriptionManagement() {
     }
   };
 
+  // Mở modal xác nhận thanh toán 
+  const openConfirmPaymentModal = (id: string) => {
+    setSelectedSubscriptionId(id);
+    setIsConfirmPaymentModalOpen(true);
+  };
+  
+  // Đóng modal xác nhận thanh toán
+  const closeConfirmPaymentModal = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsConfirmPaymentModalOpen(false);
+      setIsClosing(false);
+      setSelectedSubscriptionId(null);
+    }, 200);
+  };
+
+  // Hàm xác nhận thanh toán cho đơn đăng ký
+  const handleConfirmPayment = async () => {
+    if (!selectedSubscriptionId) return;
+    
+    try {
+      setConfirmingPayment(true);
+      
+      // Tìm thông tin đơn đăng ký cần xác nhận
+      const subscription = subscriptions.find(s => s.id === selectedSubscriptionId);
+      if (!subscription) {
+        throw new Error('Không tìm thấy thông tin đơn đăng ký');
+      }
+      
+      // Dữ liệu thanh toán
+      const paymentData = {
+        paymentStatus: 'paid',
+        paymentDate: new Date().toISOString().split('T')[0],
+        paymentMethod: subscription.paymentMethod || 'cash', // Giữ nguyên phương thức nếu có
+        notes: subscription.notes ? `${subscription.notes}\nXác nhận thanh toán vào ${new Date().toLocaleString('vi-VN')}` : `Xác nhận thanh toán vào ${new Date().toLocaleString('vi-VN')}`
+      };
+      
+      console.log('Xác nhận thanh toán cho đơn:', selectedSubscriptionId, paymentData);
+      
+      // Gọi API để cập nhật trạng thái thanh toán
+      try {
+        const response = await subscriptionAPI.updatePaymentStatus(selectedSubscriptionId, paymentData);
+        console.log('API response:', response);
+        
+        if (response.status === 'success') {
+          // Cập nhật trạng thái trong state
+          const updatedSubscriptions = subscriptions.map(s => {
+            if (s.id === selectedSubscriptionId) {
+              return {
+                ...s,
+                paymentStatus: 'paid',
+                paymentDate: paymentData.paymentDate,
+                notes: paymentData.notes
+              };
+            }
+            return s;
+          });
+          
+          setSubscriptions(updatedSubscriptions);
+          localStorage.setItem('gymSubscriptions', JSON.stringify(updatedSubscriptions));
+          
+          alert('Xác nhận thanh toán thành công!');
+        } else {
+          throw new Error(response.message || 'Cập nhật thất bại');
+        }
+      } catch (apiError) {
+        console.error('API error:', apiError);
+        
+        // Trong môi trường demo, vẫn cập nhật dữ liệu dù API lỗi
+        const updatedSubscriptions = subscriptions.map(s => {
+          if (s.id === selectedSubscriptionId) {
+            return {
+              ...s,
+              paymentStatus: 'paid',
+              paymentDate: paymentData.paymentDate,
+              notes: paymentData.notes
+            };
+          }
+          return s;
+        });
+        
+        setSubscriptions(updatedSubscriptions);
+        localStorage.setItem('gymSubscriptions', JSON.stringify(updatedSubscriptions));
+        
+        alert('Xác nhận thanh toán thành công! (Lưu ý: Dữ liệu chỉ được cập nhật cục bộ)');
+      }
+      
+      // Đóng modal
+      closeConfirmPaymentModal();
+      
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      alert(`Có lỗi xảy ra: ${(error as Error).message}`);
+    } finally {
+      setConfirmingPayment(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -768,6 +868,16 @@ export default function SubscriptionManagement() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <div className="flex items-center space-x-2">
+                                {subscription.paymentStatus === 'pending' && (
+                                  <button
+                                    onClick={() => openConfirmPaymentModal(subscription.id)}
+                                    disabled={confirmingPayment}
+                                    className="text-green-600 hover:text-green-900 px-2 py-1 rounded hover:bg-green-50"
+                                    title="Xác nhận thanh toán"
+                                  >
+                                    <FiCheck className="h-4 w-4" />
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => handleEdit(subscription.id)}
                                   className="text-indigo-600 hover:text-indigo-900 px-2 py-1 rounded hover:bg-indigo-50"
@@ -1060,6 +1170,94 @@ export default function SubscriptionManagement() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Thêm Modal xác nhận thanh toán */}
+      {isConfirmPaymentModalOpen && selectedSubscriptionId && (
+        <div className="fixed z-50 inset-0 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            {/* Overlay */}
+            <div 
+              className={`fixed inset-0 bg-gray-500 transition-opacity ${isClosing ? 'bg-opacity-0' : 'bg-opacity-75'}`}
+              style={{ transitionDuration: '200ms' }}
+              aria-hidden="true" 
+              onClick={closeConfirmPaymentModal}
+            ></div>
+            
+            {/* Căn giữa modal */}
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            {/* Modal Panel */}
+            <div 
+              className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${isClosing ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
+              style={{ transitionDuration: '200ms' }}
+            >
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <FiDollarSign className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">Xác nhận thanh toán</h3>
+                    <div className="mt-2">
+                      {(() => {
+                        const subscription = subscriptions.find(s => s.id === selectedSubscriptionId);
+                        return subscription ? (
+                          <div className="text-sm text-gray-500">
+                            <p className="mb-2">
+                              Bạn có chắc chắn muốn xác nhận thanh toán cho đơn đăng ký này?
+                            </p>
+                            <div className="bg-gray-50 p-3 rounded-md mt-3">
+                              <p><strong>Thành viên:</strong> {subscription.member.name}</p>
+                              <p><strong>Gói tập:</strong> {subscription.membership.name}</p>
+                              <p><strong>Thời hạn:</strong> {formatDate(subscription.startDate)} - {formatDate(subscription.endDate)}</p>
+                              <p><strong>Số tiền:</strong> {subscription.paymentAmount.toLocaleString('vi-VN')} đ</p>
+                              <p><strong>Phương thức:</strong> {
+                                subscription.paymentMethod === 'cash' 
+                                  ? 'Tiền mặt' 
+                                  : subscription.paymentMethod === 'bank_transfer' 
+                                  ? 'Chuyển khoản' 
+                                  : 'Thẻ tín dụng'
+                              }</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-red-500">Không tìm thấy thông tin đơn đăng ký</p>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button 
+                  type="button" 
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={handleConfirmPayment}
+                  disabled={confirmingPayment}
+                >
+                  {confirmingPayment ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang xử lý...
+                    </>
+                  ) : 'Xác nhận thanh toán'}
+                </button>
+                <button 
+                  type="button" 
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={closeConfirmPaymentModal}
+                  disabled={confirmingPayment}
+                >
+                  Hủy
+                </button>
+              </div>
             </div>
           </div>
         </div>

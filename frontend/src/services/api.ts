@@ -93,16 +93,8 @@ export const authAPI = {
   register: async (userData: any) => {
     console.log('API service register called with:', userData);
     try {
-      console.log('Making API request to:', `${API_URL}/auth/signup`);
-      
-      // Use direct axios call instead of api instance to debug
-      const response = await axios.post(`${API_URL}/auth/signup`, userData, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        withCredentials: true,
-      });
-      
+      // Use the api instance with proper error handling instead of direct axios
+      const response = await api.post<ApiResponse<{ user: any }>>('/auth/signup', userData);
       console.log('API service register response:', response.data);
       return response.data;
     } catch (error) {
@@ -240,6 +232,110 @@ export const attendanceAPI = {
 
   deleteAttendance: async (id: string) => {
     const response = await api.delete<ApiResponse<null>>(`/attendance/${id}`);
+    return response.data;
+  },
+};
+
+// Equipment API
+export const equipmentAPI = {
+  getAllEquipment: async (params?: { 
+    category?: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+    sort?: string;
+    order?: 'asc' | 'desc';
+  }) => {
+    const response = await api.get<ApiResponse<{ equipment: any[] }>>('/equipment', { params });
+    return response.data;
+  },
+
+  getEquipment: async (id: string) => {
+    const response = await api.get<ApiResponse<{ equipment: any }>>(`/equipment/${id}`);
+    return response.data;
+  },
+
+  createEquipment: async (equipmentData: any) => {
+    const response = await api.post<ApiResponse<{ equipment: any }>>('/equipment', equipmentData);
+    return response.data;
+  },
+
+  updateEquipment: async (id: string, equipmentData: any) => {
+    const response = await api.patch<ApiResponse<{ equipment: any }>>(`/equipment/${id}`, equipmentData);
+    return response.data;
+  },
+
+  deleteEquipment: async (id: string) => {
+    const response = await api.delete<ApiResponse<null>>(`/equipment/${id}`);
+    return response.data;
+  },
+
+  // Maintenance logs
+  getMaintenanceLogs: async (equipmentId: string, params?: {
+    status?: string;
+    page?: number;
+    limit?: number;
+    sort?: string;
+    order?: 'asc' | 'desc';
+  }) => {
+    const response = await api.get<ApiResponse<{ maintenanceLogs: any[] }>>(`/equipment/${equipmentId}/maintenance`, { params });
+    return response.data;
+  },
+
+  getMaintenanceLog: async (id: string) => {
+    const response = await api.get<ApiResponse<{ maintenanceLog: any }>>(`/equipment/maintenance/${id}`);
+    return response.data;
+  },
+
+  createMaintenanceLog: async (equipmentId: string, maintenanceData: any) => {
+    const response = await api.post<ApiResponse<{ maintenanceLog: any }>>(`/equipment/${equipmentId}/maintenance`, maintenanceData);
+    return response.data;
+  },
+
+  updateMaintenanceLog: async (id: string, maintenanceData: any) => {
+    const response = await api.patch<ApiResponse<{ maintenanceLog: any }>>(`/equipment/maintenance/${id}`, maintenanceData);
+    return response.data;
+  },
+
+  deleteMaintenanceLog: async (id: string) => {
+    const response = await api.delete<ApiResponse<null>>(`/equipment/maintenance/${id}`);
+    return response.data;
+  },
+};
+
+// Dashboard API
+export const dashboardAPI = {
+  getTrainerDashboardStats: async () => {
+    interface DashboardResponse {
+      stats: {
+        totalMembers: number;
+        activeMembers: number;
+        todayCheckIns: number;
+        upcomingSessions: number;
+      };
+      upcomingAppointments: Array<{
+        id: string;
+        memberName: string;
+        time: string;
+        date: string;
+        type: string;
+      }>;
+      recentActivities: Array<{
+        id: string;
+        memberName: string;
+        action: string;
+        time: string;
+      }>;
+      memberAlerts: Array<{
+        id: string;
+        memberName: string;
+        issue: string;
+        priority: 'high' | 'medium' | 'low';
+      }>;
+    }
+    
+    const response = await api.get<ApiResponse<DashboardResponse>>('/dashboard/trainer');
     return response.data;
   },
 };

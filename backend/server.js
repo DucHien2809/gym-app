@@ -11,6 +11,8 @@ const userRoutes = require('./src/routes/user.routes');
 const membershipRoutes = require('./src/routes/membership.routes');
 const subscriptionRoutes = require('./src/routes/subscription.routes');
 const attendanceRoutes = require('./src/routes/attendance.routes');
+const equipmentRoutes = require('./src/routes/equipment.routes');
+const dashboardRoutes = require('./src/routes/dashboard.routes');
 
 // Load env variables
 dotenv.config();
@@ -20,10 +22,10 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: '*', // Cho phép tất cả các origin trong môi trường phát triển
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://gym-management-client.vercel.app'],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false
+  credentials: true
 };
 
 // Middleware
@@ -41,6 +43,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/memberships', membershipRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/equipment', equipmentRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Default route
 app.get('/', (req, res) => {

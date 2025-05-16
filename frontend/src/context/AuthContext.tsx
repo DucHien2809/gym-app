@@ -223,6 +223,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setAuth((prev) => ({ ...prev, isLoading: true, error: null }));
       
+      // Check if backend is reachable before making the register request
+      try {
+        // Simple ping request to check connectivity
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/test`, {
+          method: 'GET',
+          mode: 'cors',
+        });
+      } catch (error) {
+        // If the ping fails, show a more specific error message
+        setAuth((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng của bạn và thử lại sau.',
+        }));
+        return;
+      }
+      
       const response = await authAPI.register(userData);
       
       if (response.status === 'success' && response.token && response.data?.user) {
@@ -245,14 +262,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error: any) {
       console.error('Registration error:', error);
       
-      let errorMessage = 'Registration failed. Please try again.';
+      let errorMessage = 'Đăng ký thất bại. Vui lòng thử lại sau.';
       
       if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
+        // Network error specific messages
+        if (error.message.includes('Network Error')) {
+          errorMessage = 'Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet của bạn và thử lại.';
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        } else {
+          errorMessage = error.message;
+        }
       }
       
       setAuth((prev) => ({
