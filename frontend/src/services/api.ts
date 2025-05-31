@@ -78,11 +78,22 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: async (email: string, password: string) => {
-    const response = await api.post<ApiResponse<{ user: any }>>('/auth/login', {
-      email,
-      password,
-    });
-    return response.data;
+    console.log(`Attempting login with email: ${email} to ${API_URL}/auth/login`);
+    try {
+      const response = await api.post<ApiResponse<{ user: any }>>('/auth/login', {
+        email,
+        password,
+      });
+      console.log('Login response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Login error:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Response status:', error.response?.status);
+        console.error('Response data:', error.response?.data);
+      }
+      throw error;
+    }
   },
 
   logout: async () => {
@@ -121,6 +132,11 @@ export const userAPI = {
     return response.data;
   },
 
+  getAllTrainers: async () => {
+    const response = await api.get<ApiResponse<{ trainers: any[] }>>('/users/trainers');
+    return response.data;
+  },
+
   getUser: async (id: string) => {
     const response = await api.get<ApiResponse<{ user: any }>>(`/users/${id}`);
     return response.data;
@@ -143,6 +159,11 @@ export const userAPI = {
 
   changeUserRole: async (userId: string, role: 'member' | 'trainer') => {
     const response = await api.patch<ApiResponse<{ user: any }>>(`/users/${userId}/role`, { role });
+    return response.data;
+  },
+
+  updatePassword: async (userId: string, passwordData: { currentPassword: string, newPassword: string }) => {
+    const response = await api.patch<ApiResponse<null>>(`/users/${userId}/password`, passwordData);
     return response.data;
   },
 };
@@ -338,6 +359,62 @@ export const dashboardAPI = {
     const response = await api.get<ApiResponse<DashboardResponse>>('/dashboard/trainer');
     return response.data;
   },
+};
+
+// Cancellation API
+export const cancellationAPI = {
+  getAllCancellationRequests: async () => {
+    const response = await api.get<ApiResponse<{ cancellationRequests: any[] }>>('/cancellations');
+    return response.data;
+  },
+
+  getMemberCancellationRequests: async (memberId: string) => {
+    const response = await api.get<ApiResponse<{ cancellationRequests: any[] }>>(`/cancellations/member/${memberId}`);
+    return response.data;
+  },
+
+  requestCancellation: async (cancellationData: any) => {
+    const response = await api.post<ApiResponse<{ cancellationRequest: any }>>('/cancellations', cancellationData);
+    return response.data;
+  },
+
+  processCancellationRequest: async (id: string, processingData: any) => {
+    const response = await api.patch<ApiResponse<{ cancellationRequest: any }>>(`/cancellations/${id}`, processingData);
+    return response.data;
+  }
+};
+
+// Appointment API
+export const appointmentAPI = {
+  getAllAppointments: async () => {
+    const response = await api.get<ApiResponse<{ appointments: any[] }>>('/appointments');
+    return response.data;
+  },
+
+  getMemberAppointments: async (memberId: string) => {
+    const response = await api.get<ApiResponse<{ appointments: any[] }>>(`/appointments/member/${memberId}`);
+    return response.data;
+  },
+
+  getTrainerAppointments: async (trainerId: string) => {
+    const response = await api.get<ApiResponse<{ appointments: any[] }>>(`/appointments/trainer/${trainerId}`);
+    return response.data;
+  },
+
+  createAppointment: async (appointmentData: any) => {
+    const response = await api.post<ApiResponse<{ appointment: any }>>('/appointments', appointmentData);
+    return response.data;
+  },
+
+  updateAppointmentStatus: async (id: string, statusData: any) => {
+    const response = await api.patch<ApiResponse<{ appointment: any }>>(`/appointments/${id}`, statusData);
+    return response.data;
+  },
+
+  deleteAppointment: async (id: string) => {
+    const response = await api.delete<ApiResponse<null>>(`/appointments/${id}`);
+    return response.data;
+  }
 };
 
 export default api;

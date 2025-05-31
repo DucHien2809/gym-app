@@ -51,7 +51,7 @@ interface Alert {
 }
 
 export default function TrainerDashboard() {
-  const { auth } = useAuth();
+  const { auth, logout } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
@@ -141,7 +141,7 @@ export default function TrainerDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header with gradient */}
+      {/* Page Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 shadow-lg">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
@@ -159,16 +159,7 @@ export default function TrainerDashboard() {
               </button>
               <div className="relative">
                 <FiBell className="h-6 w-6 text-white cursor-pointer hover:text-blue-200 transition-colors" />
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">3</span>
               </div>
-              {auth.user && (
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium border-2 border-white">
-                    {auth.user.name ? auth.user.name.charAt(0).toUpperCase() : 'T'}
-                  </div>
-                  <span className="text-white font-medium hidden sm:inline-block">{auth.user.name || 'Huấn luyện viên'}</span>
-                </div>
-              )}
             </div>
           </div>
         </div>

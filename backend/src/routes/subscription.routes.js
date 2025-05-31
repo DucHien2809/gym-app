@@ -10,7 +10,7 @@ router.use(authMiddleware.protect);
 // Routes cho tất cả subscriptions
 router.route('/')
   .get(authMiddleware.restrictTo('admin', 'trainer'), subscriptionController.getAllSubscriptions)
-  .post(authMiddleware.restrictTo('admin', 'trainer'), subscriptionController.createSubscription);
+  .post(subscriptionController.createSubscription);  // Allow all authenticated users (including members) to create subscriptions
 
 // Routes cho một subscription
 router.route('/:id')

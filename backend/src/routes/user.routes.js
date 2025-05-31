@@ -12,6 +12,9 @@ router.route('/')
   .get(authMiddleware.restrictTo('admin', 'trainer'), userController.getAllUsers)
   .post(authMiddleware.restrictTo('admin'), userController.createUser);
 
+// Route riêng để lấy danh sách huấn luyện viên (không cần phân quyền nghiêm ngặt)
+router.get('/trainers', userController.getAllTrainers);
+
 // Routes quản lý thông tin một người dùng
 router.route('/:id')
   .get(authMiddleware.restrictTo('admin', 'trainer'), userController.getUser)
@@ -20,5 +23,8 @@ router.route('/:id')
 
 // Route để thay đổi vai trò người dùng (chỉ admin mới có quyền)
 router.patch('/:id/role', authMiddleware.restrictTo('admin'), userController.changeUserRole);
+
+// Route để thay đổi mật khẩu
+router.patch('/:id/password', userController.updatePassword);
 
 module.exports = router;

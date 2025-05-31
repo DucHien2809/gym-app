@@ -41,61 +41,23 @@ export default function MemberAttendance() {
       try {
         setLoading(true);
         
-        // Try to get data from localStorage first
-        const savedAttendances = localStorage.getItem('memberAttendances');
-        if (savedAttendances) {
-          setAttendances(JSON.parse(savedAttendances));
+        if (!auth.user?.id) {
+          setError('Thông tin người dùng không có sẵn');
           setLoading(false);
           return;
         }
         
-        // Fake data for development
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const twoDaysAgo = new Date(today);
-        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-        const lastWeek = new Date(today);
-        lastWeek.setDate(lastWeek.getDate() - 7);
-        
-        const sampleAttendances = [
-          {
-            id: '1',
-            memberId: auth.user?.id || 'user1',
-            checkInTime: today.toISOString(),
-            notes: 'Tập luyện ngày hôm nay'
-          },
-          {
-            id: '2',
-            memberId: auth.user?.id || 'user1',
-            checkInTime: yesterday.toISOString(),
-            checkOutTime: new Date(yesterday.getTime() + 2 * 60 * 60 * 1000).toISOString(),
-            duration: 120,
-            notes: 'Buổi tập luyện cường độ cao'
-          },
-          {
-            id: '3',
-            memberId: auth.user?.id || 'user1',
-            checkInTime: twoDaysAgo.toISOString(),
-            checkOutTime: new Date(twoDaysAgo.getTime() + 1.5 * 60 * 60 * 1000).toISOString(),
-            duration: 90,
-            notes: 'Tập luyện nhẹ nhàng'
-          },
-          {
-            id: '4',
-            memberId: auth.user?.id || 'user1',
-            checkInTime: lastWeek.toISOString(),
-            checkOutTime: new Date(lastWeek.getTime() + 3 * 60 * 60 * 1000).toISOString(),
-            duration: 180,
-            notes: 'Buổi tập dài nhất trong tuần'
-          }
-        ];
-        
-        setAttendances(sampleAttendances);
-        localStorage.setItem('memberAttendances', JSON.stringify(sampleAttendances));
+        // Fetch attendances from API
+        const response = await attendanceAPI.getMemberAttendances(auth.user.id);
+        if (response.status === 'success' && response.data?.attendances) {
+          const attendanceData = response.data.attendances as unknown as Attendance[];
+          setAttendances(attendanceData);
+        } else {
+          setError('Không thể tải dữ liệu điểm danh. Vui lòng thử lại sau.');
+        }
       } catch (err) {
         console.error('Error fetching attendances:', err);
-        setError('Failed to load attendance records. Please try again later.');
+        setError('Không thể tải lịch sử điểm danh. Vui lòng thử lại sau.');
       } finally {
         setLoading(false);
       }
@@ -194,9 +156,9 @@ export default function MemberAttendance() {
                 className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-700 bg-opacity-30 rounded-lg hover:bg-opacity-50 focus:outline-none transition-all duration-200"
               >
                 <FiArrowLeft className="w-5 h-5 mr-2" />
-                Back to Dashboard
+                Về bảng điều khiển
               </motion.button>
-              <h1 className="text-2xl font-bold text-white">My Attendance Records</h1>
+              <h1 className="text-2xl font-bold text-white">Lịch sử điểm danh của tôi</h1>
             </div>
           </div>
         </div>
@@ -206,7 +168,7 @@ export default function MemberAttendance() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div>
-            <p className="mt-4 text-lg text-gray-600">Loading your attendance records...</p>
+            <p className="mt-4 text-lg text-gray-600">Đang tải lịch sử điểm danh của bạn...</p>
           </div>
         ) : error ? (
           <div className="text-center py-16">
@@ -218,7 +180,7 @@ export default function MemberAttendance() {
               onClick={() => window.location.reload()}
               className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 transition-colors duration-200"
             >
-              Try Again
+              Thử lại
             </button>
           </div>
         ) : (
@@ -232,7 +194,7 @@ export default function MemberAttendance() {
                 <input
                   type="text"
                   className="block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-gray-700 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-                  placeholder="Search in notes..."
+                  placeholder="Tìm kiếm trong ghi chú..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -253,9 +215,9 @@ export default function MemberAttendance() {
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
-                  <option value="all">All Sessions</option>
-                  <option value="active">Active Sessions</option>
-                  <option value="completed">Completed Sessions</option>
+                  <option value="all">Tất cả buổi tập</option>
+                  <option value="active">Buổi tập đang diễn ra</option>
+                  <option value="completed">Buổi tập đã hoàn thành</option>
                 </select>
               </div>
             </div>
@@ -273,7 +235,7 @@ export default function MemberAttendance() {
                     <FiActivity className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-sm opacity-80">Total Sessions</p>
+                    <p className="text-sm opacity-80">Tổng số buổi tập</p>
                     <h3 className="text-2xl font-bold">{filteredAttendances.length}</h3>
                   </div>
                 </div>
@@ -296,7 +258,7 @@ export default function MemberAttendance() {
                     <FiCheckCircle className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-sm opacity-80">Completed Sessions</p>
+                    <p className="text-sm opacity-80">Buổi tập đã hoàn thành</p>
                     <h3 className="text-2xl font-bold">{completedSessions}</h3>
                   </div>
                 </div>
@@ -319,7 +281,7 @@ export default function MemberAttendance() {
                     <FiClock className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-sm opacity-80">Average Duration</p>
+                    <p className="text-sm opacity-80">Thời gian trung bình</p>
                     <h3 className="text-2xl font-bold">{formatDuration(averageDuration)}</h3>
                   </div>
                 </div>
@@ -343,8 +305,8 @@ export default function MemberAttendance() {
                 <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100">
                   <FiClock className="h-8 w-8 text-gray-400" />
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-gray-900">No attendance records found</h3>
-                <p className="mt-1 text-gray-500">Try changing your filters or check back later</p>
+                <h3 className="mt-4 text-lg font-medium text-gray-900">Không tìm thấy bản ghi điểm danh nào</h3>
+                <p className="mt-1 text-gray-500">Hãy thử thay đổi bộ lọc hoặc kiểm tra lại sau</p>
               </motion.div>
             ) : (
               <div className="space-y-4">
@@ -368,14 +330,14 @@ export default function MemberAttendance() {
                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                               attendance.checkOutTime ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                             }`}>
-                              {attendance.checkOutTime ? 'Completed' : 'In Progress'}
+                              {attendance.checkOutTime ? 'Hoàn thành' : 'Đang diễn ra'}
                             </span>
                             <h3 className="text-lg font-medium text-gray-900 mt-1">
-                              Session on {formatDate(attendance.checkInTime)}
+                              Buổi tập ngày {formatDate(attendance.checkInTime)}
                             </h3>
                             <p className="text-sm text-gray-500">
-                              Check-in: {formatTime(attendance.checkInTime)}
-                              {attendance.checkOutTime && ` • Check-out: ${formatTime(attendance.checkOutTime)}`}
+                              Vào: {formatTime(attendance.checkInTime)}
+                              {attendance.checkOutTime && ` • Ra: ${formatTime(attendance.checkOutTime)}`}
                             </p>
                           </div>
                         </div>
@@ -383,7 +345,7 @@ export default function MemberAttendance() {
                         <div className="flex-shrink-0">
                           {attendance.duration && (
                             <div className="text-right">
-                              <p className="text-sm text-gray-500">Duration</p>
+                              <p className="text-sm text-gray-500">Thời gian</p>
                               <p className="text-lg font-semibold text-indigo-600">{formatDuration(attendance.duration)}</p>
                             </div>
                           )}
@@ -392,7 +354,7 @@ export default function MemberAttendance() {
 
                       {attendance.notes && (
                         <div className="mt-4 pt-4 border-t border-gray-100">
-                          <p className="text-sm text-gray-500">Notes:</p>
+                          <p className="text-sm text-gray-500">Ghi chú:</p>
                           <p className="text-gray-700">{attendance.notes}</p>
                         </div>
                       )}

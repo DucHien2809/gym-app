@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { attendanceAPI } from '@/services/api';
-import { FiPlus, FiSearch, FiFilter, FiEdit, FiTrash2, FiArrowLeft, FiCheck, FiX, FiClock, FiUser, FiCalendar, FiActivity } from 'react-icons/fi';
+import { attendanceAPI, userAPI } from '@/services/api';
+import { FiSearch, FiFilter, FiEdit, FiTrash2, FiArrowLeft, FiCheck, FiX, FiClock, FiUser, FiCalendar, FiActivity } from 'react-icons/fi';
 
 interface Attendance {
   id: string;
@@ -14,6 +14,7 @@ interface Attendance {
   duration?: number;
   notes?: string;
   member: {
+    id: string;
     name: string;
     email: string;
     phone?: string;
@@ -21,74 +22,23 @@ interface Attendance {
   };
 }
 
-// Dữ liệu mẫu cho phát triển
-const sampleAttendances: Attendance[] = [
-  {
-    id: '1',
-    memberId: 'member1',
-    checkInTime: '2023-11-10T08:30:00',
-    checkOutTime: '2023-11-10T10:15:00',
-    duration: 105, // phút
-    notes: 'Tập luyện chăm chỉ',
-    member: {
-      name: 'Nguyễn Văn A',
-      email: 'nguyenvana@gmail.com',
-      phone: '0901234567',
-      avatar: 'https://randomuser.me/api/portraits/men/1.jpg'
-    }
-  },
-  {
-    id: '2',
-    memberId: 'member2',
-    checkInTime: '2023-11-10T14:20:00',
-    checkOutTime: '2023-11-10T16:00:00',
-    duration: 100, // phút
-    member: {
-      name: 'Trần Thị B',
-      email: 'tranthib@gmail.com',
-      phone: '0912345678',
-      avatar: 'https://randomuser.me/api/portraits/women/2.jpg'
-    }
-  },
-  {
-    id: '3',
-    memberId: 'member3',
-    checkInTime: '2023-11-10T18:00:00',
-    notes: 'Đang tập luyện',
-    member: {
-      name: 'Lê Văn C',
-      email: 'levanc@gmail.com',
-      phone: '0923456789',
-      avatar: 'https://randomuser.me/api/portraits/men/3.jpg'
-    }
-  },
-  {
-    id: '4',
-    memberId: 'member4',
-    checkInTime: '2023-11-09T09:45:00',
-    checkOutTime: '2023-11-09T11:30:00',
-    duration: 105, // phút
-    member: {
-      name: 'Phạm Thị D',
-      email: 'phamthid@gmail.com',
-      phone: '0934567890',
-      avatar: 'https://randomuser.me/api/portraits/women/4.jpg'
-    }
-  },
-  {
-    id: '5',
-    memberId: 'member5',
-    checkInTime: '2023-11-09T15:30:00',
-    checkOutTime: '2023-11-09T17:45:00',
-    duration: 135, // phút
-    member: {
-      name: 'Hoàng Văn E',
-      email: 'hoangvane@gmail.com',
-      phone: '0945678901',
-      avatar: 'https://randomuser.me/api/portraits/men/5.jpg'
-    }
-  }
-];
+interface Member {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  active: boolean;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  active: boolean;
+}
 
 export default function AttendanceManagement() {
   const { auth } = useAuth();
@@ -118,15 +68,70 @@ export default function AttendanceManagement() {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   
-  // Danh sách thành viên mẫu
-  const [members, setMembers] = useState([
-    { id: 'member1', name: 'Nguyễn Văn A', email: 'nguyenvana@gmail.com', phone: '0901234567' },
-    { id: 'member2', name: 'Trần Thị B', email: 'tranthib@gmail.com', phone: '0912345678' },
-    { id: 'member3', name: 'Lê Văn C', email: 'levanc@gmail.com', phone: '0923456789' },
-    { id: 'member4', name: 'Phạm Thị D', email: 'phamthid@gmail.com', phone: '0934567890' },
-    { id: 'member5', name: 'Hoàng Văn E', email: 'hoangvane@gmail.com', phone: '0945678901' },
-    { id: 'member6', name: 'Võ Thị F', email: 'vothif@gmail.com', phone: '0956789012' }
-  ]);
+  // Danh sách thành viên thật từ API
+  const [members, setMembers] = useState<Member[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+
+  // Lấy dữ liệu điểm danh từ API
+  const fetchAttendances = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('Fetching attendances from API...');
+      
+      const response = await attendanceAPI.getAllAttendances();
+      
+      if (response.status === 'success' && response.data?.attendances) {
+        const attendancesData = Array.isArray(response.data.attendances) 
+          ? response.data.attendances 
+          : [];
+        console.log('Loaded attendances from API:', attendancesData.length);
+        setAttendances(attendancesData);
+      } else {
+        setAttendances([]);
+        console.log('No attendances found from API');
+      }
+      
+    } catch (err) {
+      console.error('Error loading attendances:', err);
+      setError('Không thể tải dữ liệu điểm danh. Vui lòng thử lại sau.');
+      setAttendances([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Lấy danh sách thành viên từ API
+  const fetchMembers = async () => {
+    try {
+      setMembersLoading(true);
+      console.log('Fetching members from API...');
+      
+      const response = await userAPI.getAllUsers();
+      
+      if (response.status === 'success' && response.data?.users) {
+        // Chỉ lấy những user có role là 'member' và đang active
+        const usersData = Array.isArray(response.data.users) 
+          ? response.data.users 
+          : [];
+        const membersData = usersData.filter((user: User) => 
+          user.role === 'member' && user.active
+        );
+        console.log('Loaded members from API:', membersData.length);
+        setMembers(membersData);
+      } else {
+        setMembers([]);
+        console.log('No members found from API');
+      }
+      
+    } catch (err) {
+      console.error('Error loading members:', err);
+      setMembers([]);
+    } finally {
+      setMembersLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Kiểm tra xác thực
@@ -141,43 +146,8 @@ export default function AttendanceManagement() {
       return;
     }
 
-    // Lấy dữ liệu điểm danh
-    const fetchAttendances = async () => {
-      try {
-        setLoading(true);
-        
-        // Kiểm tra dữ liệu trong localStorage
-        const savedAttendances = localStorage.getItem('gymAttendances');
-        if (savedAttendances) {
-          setAttendances(JSON.parse(savedAttendances));
-          setLoading(false);
-          return;
-        }
-
-        // Gọi API
-        const response = await attendanceAPI.getAllAttendances();
-        if (response.status === 'success' && response.data?.attendances) {
-          const attendancesData = response.data.attendances as unknown as Attendance[];
-          setAttendances(attendancesData);
-          localStorage.setItem('gymAttendances', JSON.stringify(attendancesData));
-        } else {
-          // Sử dụng dữ liệu mẫu khi API không trả về kết quả
-          setAttendances(sampleAttendances);
-          localStorage.setItem('gymAttendances', JSON.stringify(sampleAttendances));
-        }
-      } catch (err) {
-        setError('Không thể tải dữ liệu điểm danh. Vui lòng thử lại sau.');
-        console.error('Error fetching attendances:', err);
-        
-        // Sử dụng dữ liệu mẫu khi có lỗi
-        setAttendances(sampleAttendances);
-        localStorage.setItem('gymAttendances', JSON.stringify(sampleAttendances));
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchAttendances();
+    fetchMembers();
   }, [auth.isAuthenticated, auth.user, router]);
 
   const handleBack = () => {
@@ -219,21 +189,7 @@ export default function AttendanceManagement() {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
-  const handleAddNew = () => {
-    // Reset form
-    setFormData({
-      memberId: '',
-      memberName: '',
-      memberEmail: '',
-      memberPhone: '',
-      checkInTime: new Date().toISOString().slice(0, 16),
-      checkOutTime: '',
-      notes: ''
-    });
-    setFormErrors({});
-    setIsEditing(false);
-    setIsFormModalOpen(true);
-  };
+
 
   const handleEdit = (id: string) => {
     const attendance = attendances.find(a => a.id === id);
@@ -330,7 +286,7 @@ export default function AttendanceManagement() {
   };
 
   // Xử lý submit form
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -340,92 +296,76 @@ export default function AttendanceManagement() {
     setIsSubmitting(true);
     
     try {
-      // Tính thời gian tập (nếu có check-out)
-      let duration;
-      if (formData.checkOutTime) {
-        const checkInDate = new Date(formData.checkInTime);
-        const checkOutDate = new Date(formData.checkOutTime);
-        const diffMs = checkOutDate.getTime() - checkInDate.getTime();
-        duration = Math.round(diffMs / 60000); // Convert to minutes
-      }
-      
-      // Tạo đối tượng điểm danh mới
-      const member = members.find(m => m.id === formData.memberId);
-      
-      if (!member) {
-        throw new Error('Thông tin thành viên không hợp lệ');
-      }
-      
-      const attendanceData: Partial<Attendance> = {
-        memberId: formData.memberId,
-        checkInTime: formData.checkInTime,
-        checkOutTime: formData.checkOutTime || undefined,
-        duration,
-        notes: formData.notes,
-        member: {
-          name: member.name,
-          email: member.email,
-          phone: member.phone,
-          avatar: `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 10) + 1}.jpg`
-        }
-      };
-      
-      // Giả lập gọi API
-      setTimeout(() => {
-        let updatedAttendances;
+      if (isEditing && selectedAttendanceId) {
+        // Cập nhật điểm danh với API (chỉ check-out)
+        const response = await attendanceAPI.checkOut(selectedAttendanceId, {
+          notes: formData.notes
+        });
         
-        if (isEditing && selectedAttendanceId) {
-          // Cập nhật điểm danh
-          updatedAttendances = attendances.map(attendance => {
-            if (attendance.id === selectedAttendanceId) {
-              return {
-                ...attendance,
-                ...attendanceData
-              };
-            }
-            return attendance;
-          });
-          
+        if (response.status === 'success') {
           alert('Cập nhật điểm danh thành công!');
-        } else {
-          // Thêm mới điểm danh
-          const newAttendance = {
-            id: Date.now().toString(),
-            ...attendanceData
-          } as Attendance;
-          
-          updatedAttendances = [...attendances, newAttendance];
-          alert('Thêm điểm danh mới thành công!');
+          // Refresh dữ liệu
+          fetchAttendances();
+          closeFormModal();
         }
+      } else {
+        // Tạo điểm danh mới với API
+        const response = await attendanceAPI.checkIn({
+          memberId: formData.memberId,
+          notes: formData.notes
+        });
         
-        // Cập nhật state và localStorage
-        setAttendances(updatedAttendances);
-        localStorage.setItem('gymAttendances', JSON.stringify(updatedAttendances));
-        
-        // Đóng modal
-        closeFormModal();
-        setIsSubmitting(false);
-      }, 1000);
+        if (response.status === 'success') {
+          alert('Thêm điểm danh mới thành công!');
+          // Refresh dữ liệu
+          fetchAttendances();
+          closeFormModal();
+        }
+      }
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error handling attendance:', error);
-      alert('Có lỗi xảy ra. Vui lòng thử lại sau.');
+      let errorMessage = 'Có lỗi xảy ra. Vui lòng thử lại sau.';
+      
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as { response?: { data?: { message?: string } } };
+        if (apiError.response?.data?.message) {
+          errorMessage = apiError.response.data.message;
+        }
+      }
+      
+      alert(errorMessage);
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!selectedAttendanceId) return;
     
-    const updatedAttendances = attendances.filter(
-      attendance => attendance.id !== selectedAttendanceId
-    );
-    
-    setAttendances(updatedAttendances);
-    localStorage.setItem('gymAttendances', JSON.stringify(updatedAttendances));
-    
-    closeDeleteModal();
-    alert('Đã xóa điểm danh thành công!');
+    try {
+      const response = await attendanceAPI.deleteAttendance(selectedAttendanceId);
+      
+      if (response.status === 'success') {
+        alert('Đã xóa điểm danh thành công!');
+        // Refresh dữ liệu
+        fetchAttendances();
+        closeDeleteModal();
+      }
+      
+    } catch (error: unknown) {
+      console.error('Error deleting attendance:', error);
+      let errorMessage = 'Có lỗi xảy ra khi xóa điểm danh.';
+      
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as { response?: { data?: { message?: string } } };
+        if (apiError.response?.data?.message) {
+          errorMessage = apiError.response.data.message;
+        }
+      }
+      
+      alert(errorMessage);
+    }
   };
 
   // Lọc điểm danh theo trạng thái, ngày và từ khóa tìm kiếm
@@ -460,6 +400,112 @@ export default function AttendanceManagement() {
     return true;
   });
 
+  // Kiểm tra xem thành viên đã check-in chưa
+  const isMemberCheckedIn = (memberId: string) => {
+    return attendances.some(attendance => 
+      attendance.memberId === memberId && !attendance.checkOutTime
+    );
+  };
+
+  // Hàm xử lý check-in nhanh cho thành viên
+  const handleQuickCheckIn = async (memberId: string) => {
+    try {
+      // Kiểm tra nếu thành viên đã check-in rồi
+      if (isMemberCheckedIn(memberId)) {
+        alert('Thành viên này đã điểm danh rồi!');
+        return;
+      }
+
+      console.log('Check-in for member:', memberId);
+
+      const response = await attendanceAPI.checkIn({
+        memberId: memberId,
+        notes: 'Điểm danh bởi admin'
+      });
+      
+      if (response.status === 'success') {
+        alert('Điểm danh thành công!');
+        // Refresh dữ liệu
+        fetchAttendances();
+      }
+      
+    } catch (error: unknown) {
+      console.error('Error during check-in:', error);
+      let errorMessage = 'Có lỗi xảy ra khi điểm danh.';
+      
+      if (error && typeof error === 'object') {
+        // Handle different error structures
+        if ('response' in error) {
+          const apiError = error as { response?: { data?: { message?: string; status?: string } } };
+          if (apiError.response?.data?.message) {
+            errorMessage = apiError.response.data.message;
+          }
+        } else if ('message' in error) {
+          const basicError = error as { message?: string };
+          if (basicError.message) {
+            errorMessage = basicError.message;
+          }
+        }
+      }
+      
+      // Show more detailed error in console
+      console.error('Detailed error:', {
+        error,
+        errorType: typeof error,
+        errorKeys: error && typeof error === 'object' ? Object.keys(error) : 'N/A'
+      });
+      
+      alert(errorMessage);
+    }
+  };
+  
+  // Hàm xử lý check-out nhanh cho thành viên
+  const handleQuickCheckOut = async (attendanceId: string) => {
+    try {
+      console.log('Check-out for attendance:', attendanceId);
+      
+      const response = await attendanceAPI.checkOut(attendanceId, {
+        notes: 'Check-out bởi admin'
+      });
+      
+      if (response.status === 'success') {
+        alert('Check-out thành công!');
+        // Refresh dữ liệu
+        fetchAttendances();
+      }
+      
+    } catch (error: unknown) {
+      console.error('Error during check-out:', error);
+      let errorMessage = 'Có lỗi xảy ra khi check-out.';
+      
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as { response?: { data?: { message?: string } } };
+        if (apiError.response?.data?.message) {
+          errorMessage = apiError.response.data.message;
+        }
+      }
+      
+      alert(errorMessage);
+    }
+  };
+
+  // Tìm attendance record cho member hiện tại
+  const findActiveAttendance = (memberId: string) => {
+    return attendances.find(attendance => 
+      attendance.memberId === memberId && !attendance.checkOutTime
+    );
+  };
+
+  // Format thời gian
+  const calculateDiffMinutes = (checkInTime: string) => {
+    const now = new Date();
+    const checkIn = new Date(checkInTime);
+    const diffMs = now.getTime() - checkIn.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    return diffMins;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -476,13 +522,8 @@ export default function AttendanceManagement() {
               </button>
               <h1 className="text-2xl font-bold text-white">Quản lý điểm danh</h1>
             </div>
-            <button
-              onClick={handleAddNew}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-700 bg-opacity-30 border border-white border-opacity-20 rounded-md hover:bg-opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
-            >
-              <FiPlus className="w-5 h-5 mr-2" />
-              Thêm điểm danh mới
-            </button>
+            
+
           </div>
         </div>
       </div>
@@ -580,6 +621,102 @@ export default function AttendanceManagement() {
                       )}
                     </p>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Danh sách thành viên có thể điểm danh nhanh */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-medium text-gray-900">Điểm danh nhanh</h2>
+                <button
+                  onClick={fetchMembers}
+                  className="text-indigo-600 hover:text-indigo-800"
+                >
+                  <span className="flex items-center">
+                    <FiActivity className="mr-1" /> Làm mới danh sách
+                  </span>
+                </button>
+              </div>
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                          Thành viên
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                          Trạng thái
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                          Thời gian tập
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                          Hành động
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {members.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                            Không có thành viên nào
+                          </td>
+                        </tr>
+                      ) : (
+                        members.map(member => {
+                          const isCheckedIn = isMemberCheckedIn(member.id);
+                          const activeAttendance = findActiveAttendance(member.id);
+                          const timeInGym = activeAttendance 
+                            ? calculateDiffMinutes(activeAttendance.checkInTime) 
+                            : null;
+                          
+                          return (
+                            <tr key={member.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900">{member.name}</div>
+                                    <div className="text-sm text-gray-500">{member.email}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                                  isCheckedIn 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {isCheckedIn ? 'Đang tập luyện' : 'Chưa vào phòng tập'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {isCheckedIn && timeInGym !== null ? formatDuration(timeInGym) : '-'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right">
+                                {isCheckedIn ? (
+                                  <button
+                                    onClick={() => activeAttendance && handleQuickCheckOut(activeAttendance.id)}
+                                    className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                  >
+                                    <FiClock className="mr-1" /> Check-out
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleQuickCheckIn(member.id)}
+                                    className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                  >
+                                    <FiClock className="mr-1" /> Check-in
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

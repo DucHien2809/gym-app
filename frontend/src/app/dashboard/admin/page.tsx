@@ -18,6 +18,8 @@ import {
   FiShield,
   FiBarChart2
 } from 'react-icons/fi';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
 
 export default function AdminDashboard() {
   const { auth } = useAuth();
@@ -61,7 +63,7 @@ export default function AdminDashboard() {
         ? usersResponse.data?.users 
         : [];
       const members = users.filter((user: any) => user.role === 'member') || [];
-      const staff = users.filter((user: any) => user.role === 'staff') || [];
+      const staff = users.filter((user: any) => user.role === 'trainer') || [];
       
       // Lấy danh sách gói tập
       const membershipsResponse = await membershipAPI.getAllMemberships();
@@ -413,26 +415,14 @@ export default function AdminDashboard() {
             {/* Quick Stats Section */}
             <div className="mt-12 bg-white rounded-xl shadow-md p-6 border border-gray-100">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Thống kê nhanh</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 bg-indigo-100 rounded-md p-2">
-                      <FiUsers className="h-5 w-5 text-indigo-600" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-500">Tỷ lệ giữ chân</p>
-                      <p className="text-lg font-semibold text-gray-900">{stats.retentionRate}%</p>
-                    </div>
-                  </div>
-                </div>
-                
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center">
                     <div className="flex-shrink-0 bg-green-100 rounded-md p-2">
                       <FiDollarSign className="h-5 w-5 text-green-600" />
                     </div>
                     <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-500">Doanh thu tháng</p>
+                      <p className="text-sm font-medium text-gray-500">Doanh thu ngày</p>
                       <p className="text-lg font-semibold text-gray-900">{formatCurrency(stats.revenue)}</p>
                     </div>
                   </div>
@@ -446,18 +436,6 @@ export default function AdminDashboard() {
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-500">Điểm danh hôm nay</p>
                       <p className="text-lg font-semibold text-gray-900">{stats.checkInsToday}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 bg-purple-100 rounded-md p-2">
-                      <FiCalendar className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-500">Lớp học hôm nay</p>
-                      <p className="text-lg font-semibold text-gray-900">{stats.classesToday}</p>
                     </div>
                   </div>
                 </div>

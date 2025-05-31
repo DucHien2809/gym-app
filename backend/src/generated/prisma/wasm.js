@@ -168,6 +168,70 @@ exports.Prisma.AttendanceScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.EquipmentScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  category: 'category',
+  purchaseDate: 'purchaseDate',
+  purchasePrice: 'purchasePrice',
+  manufacturer: 'manufacturer',
+  model: 'model',
+  serialNumber: 'serialNumber',
+  status: 'status',
+  location: 'location',
+  lastMaintenance: 'lastMaintenance',
+  nextMaintenance: 'nextMaintenance',
+  image: 'image',
+  notes: 'notes',
+  createdById: 'createdById',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.MaintenanceLogScalarFieldEnum = {
+  id: 'id',
+  equipmentId: 'equipmentId',
+  maintenanceDate: 'maintenanceDate',
+  maintenanceType: 'maintenanceType',
+  description: 'description',
+  cost: 'cost',
+  technician: 'technician',
+  parts: 'parts',
+  status: 'status',
+  createdById: 'createdById',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.SubscriptionCancellationRequestScalarFieldEnum = {
+  id: 'id',
+  subscriptionId: 'subscriptionId',
+  memberId: 'memberId',
+  requestDate: 'requestDate',
+  status: 'status',
+  reason: 'reason',
+  adminNote: 'adminNote',
+  processedById: 'processedById',
+  processedDate: 'processedDate',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.AppointmentScalarFieldEnum = {
+  id: 'id',
+  memberId: 'memberId',
+  trainerId: 'trainerId',
+  title: 'title',
+  description: 'description',
+  appointmentDate: 'appointmentDate',
+  duration: 'duration',
+  status: 'status',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -183,7 +247,11 @@ exports.Prisma.ModelName = {
   User: 'User',
   Membership: 'Membership',
   Subscription: 'Subscription',
-  Attendance: 'Attendance'
+  Attendance: 'Attendance',
+  Equipment: 'Equipment',
+  MaintenanceLog: 'MaintenanceLog',
+  SubscriptionCancellationRequest: 'SubscriptionCancellationRequest',
+  Appointment: 'Appointment'
 };
 
 /**

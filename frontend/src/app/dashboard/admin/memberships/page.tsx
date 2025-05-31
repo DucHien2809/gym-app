@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { membershipAPI, subscriptionAPI } from '@/services/api';
-import { FiEdit2, FiTrash2, FiPlus, FiArrowLeft, FiCheck, FiX, FiDollarSign, FiClock, FiInfo, FiList, FiUser, FiCalendar } from 'react-icons/fi';
+import { membershipAPI, subscriptionAPI, cancellationAPI, userAPI } from '@/services/api';
+import { FiEdit2, FiTrash2, FiPlus, FiArrowLeft, FiCheck, FiX, FiDollarSign, FiClock, FiInfo, FiList, FiUser, FiCalendar, FiSearch, FiFilter, FiPackage } from 'react-icons/fi';
 import useModal from '@/hooks/useModal';
 
 interface Membership {
@@ -25,9 +25,40 @@ interface MembershipFormData {
   features: string[];
 }
 
+interface CancellationRequest {
+  id: string;
+  subscriptionId: string;
+  memberId: string;
+  requestDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reason?: string;
+  adminNote?: string;
+  processedById?: string;
+  processedDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  member?: {
+    name: string;
+    email: string;
+    phone?: string;
+    avatar?: string;
+  };
+  subscription?: {
+    id: string;
+    startDate: string;
+    endDate: string;
+    membership?: {
+      name: string;
+      duration: number;
+      price: number;
+    }
+  };
+}
+
 export default function MembershipManagement() {
   const { auth } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +86,7 @@ export default function MembershipManagement() {
   const [deletingMembershipId, setDeletingMembershipId] = useState<string | null>(null);
 
   // State cho tab quản lý gói tập và đăng ký
-  const [activeTab, setActiveTab] = useState('memberships'); // 'memberships' hoặc 'subscriptions'
+  const [activeTab, setActiveTab] = useState('memberships'); // 'memberships', 'subscriptions', hoặc 'cancellations'
   
   // States cho danh sách đăng ký chờ thanh toán
   const [pendingSubscriptions, setPendingSubscriptions] = useState<any[]>([]);
@@ -69,6 +100,18 @@ export default function MembershipManagement() {
   const [cancelingSubscriptionId, setCancelingSubscriptionId] = useState<string | null>(null);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
 
+  // States cho cancellation requests
+  const [cancellationRequests, setCancellationRequests] = useState<CancellationRequest[]>([]);
+  const [cancellationsLoading, setCancellationsLoading] = useState(false);
+  const [cancellationsError, setCancellationsError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<CancellationRequest | null>(null);
+  const [processingNote, setProcessingNote] = useState('');
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+
   useEffect(() => {
     // Kiểm tra xác thực
     if (!auth.isAuthenticated) {
@@ -80,6 +123,19 @@ export default function MembershipManagement() {
     if (auth.user && auth.user.role !== 'admin') {
       router.push(`/dashboard/${auth.user.role}`);
       return;
+    }
+
+    // Check URL parameters for tab selection
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['memberships', 'subscriptions', 'cancellations'].includes(tabParam)) {
+      setActiveTab(tabParam);
+      
+      // Load data for the specific tab
+      if (tabParam === 'subscriptions') {
+        fetchPendingSubscriptions();
+      } else if (tabParam === 'cancellations') {
+        fetchCancellationRequests();
+      }
     }
 
     // Lấy dữ liệu gói tập
@@ -248,7 +304,7 @@ export default function MembershipManagement() {
     };
 
     fetchMemberships();
-  }, [auth.isAuthenticated, auth.user, router]);
+  }, [auth.isAuthenticated, auth.user, router, searchParams]);
 
   // New function to fetch pending subscriptions
   const fetchPendingSubscriptions = async () => {
@@ -386,6 +442,244 @@ export default function MembershipManagement() {
     
     if (tab === 'subscriptions') {
       fetchPendingSubscriptions();
+    } else if (tab === 'cancellations') {
+      fetchCancellationRequests();
+    }
+  };
+
+  // Function to fetch cancellation requests
+  const fetchCancellationRequests = async () => {
+    try {
+      setCancellationsLoading(true);
+      setCancellationsError(null);
+      
+      const response = await cancellationAPI.getAllCancellationRequests();
+      
+      if (response.status === 'success' && Array.isArray(response.data?.cancellationRequests)) {
+        const requests = response.data.cancellationRequests;
+        
+        // Fetch additional data for each request
+        const enhancedRequests = await Promise.all(
+          requests.map(async (request) => {
+            let enhancedRequest = { ...request };
+            
+            // Get member details
+            try {
+              const memberResponse = await userAPI.getUser(request.memberId);
+              if (memberResponse.status === 'success' && memberResponse.data?.user) {
+                const userData = memberResponse.data.user as any;
+                enhancedRequest.member = {
+                  name: userData.name || 'Unknown',
+                  email: userData.email || 'N/A',
+                  phone: userData.phone,
+                  avatar: userData.avatar,
+                };
+              }
+            } catch (error) {
+              console.error('Error fetching member details:', error);
+            }
+            
+            // Get subscription details
+            try {
+              const subscriptionResponse = await subscriptionAPI.getSubscription(request.subscriptionId);
+              if (subscriptionResponse.status === 'success' && subscriptionResponse.data?.subscription) {
+                enhancedRequest.subscription = subscriptionResponse.data.subscription;
+              }
+            } catch (error) {
+              console.error('Error fetching subscription details:', error);
+            }
+            
+            return enhancedRequest;
+          })
+        );
+        
+        setCancellationRequests(enhancedRequests);
+      } else {
+        // Use mock data if API fails
+        const mockCancellationRequests = [
+          {
+            id: 'cancel1',
+            subscriptionId: 'sub1',
+            memberId: 'member1',
+            requestDate: new Date().toISOString(),
+            status: 'pending' as const,
+            reason: 'Không thể tiếp tục tập do bận công việc',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            member: {
+              name: 'Nguyễn Văn A',
+              email: 'nguyenvana@example.com'
+            },
+            subscription: {
+              id: 'sub1',
+              startDate: new Date().toISOString(),
+              endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(),
+              membership: {
+                name: 'Standard',
+                duration: 3,
+                price: 800000
+              }
+            }
+          },
+          {
+            id: 'cancel2',
+            subscriptionId: 'sub2',
+            memberId: 'member2',
+            requestDate: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
+            status: 'approved' as const,
+            reason: 'Chuyển đến thành phố khác',
+            adminNote: 'Đã xác nhận thông tin, chấp thuận yêu cầu hủy',
+            processedDate: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+            createdAt: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
+            updatedAt: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+            member: {
+              name: 'Trần Thị B',
+              email: 'tranthib@example.com'
+            },
+            subscription: {
+              id: 'sub2',
+              startDate: new Date().toISOString(),
+              endDate: new Date(new Date().setMonth(new Date().getMonth() + 12)).toISOString(),
+              membership: {
+                name: 'Premium',
+                duration: 12,
+                price: 2500000
+              }
+            }
+          }
+        ];
+        
+        setCancellationRequests(mockCancellationRequests);
+      }
+    } catch (error) {
+      console.error('Error fetching cancellation requests:', error);
+      setCancellationsError('Không thể tải danh sách yêu cầu hủy. Vui lòng thử lại sau.');
+    } finally {
+      setCancellationsLoading(false);
+    }
+  };
+
+  // Cancellation request handlers
+  const handleProcessClick = (request: CancellationRequest) => {
+    setSelectedRequest(request);
+    setProcessingNote('');
+    setIsProcessModalOpen(true);
+  };
+
+  const closeProcessModal = () => {
+    setIsProcessModalOpen(false);
+    setSelectedRequest(null);
+    setProcessingNote('');
+  };
+
+  const handleApprove = async () => {
+    if (!selectedRequest) return;
+    
+    try {
+      setIsApproving(true);
+      
+      const processingData = {
+        status: 'approved',
+        adminNote: processingNote,
+        processedById: auth.user?.id
+      };
+      
+      const response = await cancellationAPI.processCancellationRequest(selectedRequest.id, processingData);
+      
+      if (response.status === 'success') {
+        setCancellationRequests(prev => 
+          prev.map(req => 
+            req.id === selectedRequest.id 
+              ? { 
+                  ...req, 
+                  status: 'approved', 
+                  adminNote: processingNote,
+                  processedById: auth.user?.id,
+                  processedDate: new Date().toISOString() 
+                } 
+              : req
+          )
+        );
+        
+        closeProcessModal();
+      } else {
+        setCancellationsError('Không thể duyệt yêu cầu hủy');
+      }
+    } catch (error) {
+      console.error('Error approving cancellation request:', error);
+      setCancellationsError('Đã xảy ra lỗi khi duyệt yêu cầu hủy');
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedRequest) return;
+    
+    try {
+      setIsRejecting(true);
+      
+      const processingData = {
+        status: 'rejected',
+        adminNote: processingNote,
+        processedById: auth.user?.id
+      };
+      
+      const response = await cancellationAPI.processCancellationRequest(selectedRequest.id, processingData);
+      
+      if (response.status === 'success') {
+        setCancellationRequests(prev => 
+          prev.map(req => 
+            req.id === selectedRequest.id 
+              ? { 
+                  ...req, 
+                  status: 'rejected', 
+                  adminNote: processingNote,
+                  processedById: auth.user?.id,
+                  processedDate: new Date().toISOString() 
+                } 
+              : req
+          )
+        );
+        
+        closeProcessModal();
+      } else {
+        setCancellationsError('Không thể từ chối yêu cầu hủy');
+      }
+    } catch (error) {
+      console.error('Error rejecting cancellation request:', error);
+      setCancellationsError('Đã xảy ra lỗi khi từ chối yêu cầu hủy');
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            Đang chờ
+          </span>
+        );
+      case 'approved':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            Đã duyệt
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            Từ chối
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            {status}
+          </span>
+        );
     }
   };
 
@@ -774,6 +1068,18 @@ export default function MembershipManagement() {
                 <FiDollarSign className="inline-block mr-2" />
                 Đơn đăng ký
               </button>
+
+              <button
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === 'cancellations'
+                    ? 'bg-white text-indigo-700'
+                    : 'bg-indigo-700 text-white hover:bg-indigo-800'
+                }`}
+                onClick={() => handleTabChange('cancellations')}
+              >
+                <FiX className="inline-block mr-2" />
+                Yêu cầu hủy
+              </button>
             </div>
           </div>
         </div>
@@ -847,8 +1153,8 @@ export default function MembershipManagement() {
                         <ul className="mt-2 space-y-2">
                           {membership.features.map((feature, index) => (
                             <li key={index} className="flex items-start">
-                              <FiCheck className="w-4 h-4 text-green-500 mt-0.5 mr-2" />
-                              <span className="text-sm text-gray-600">{feature}</span>
+                              <FiCheck className="w-4 h-4 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                              <span className="text-sm text-gray-600 leading-5">{feature}</span>
                             </li>
                           ))}
                         </ul>
@@ -859,7 +1165,7 @@ export default function MembershipManagement() {
               </div>
             )}
           </>
-        ) : (
+        ) : activeTab === 'subscriptions' ? (
           <>
             {/* Pending Subscriptions Management */}
             <div className="mb-6">
@@ -891,87 +1197,268 @@ export default function MembershipManagement() {
               </div>
             ) : (
               <div className="overflow-hidden bg-white shadow-sm rounded-lg">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                        Thành viên
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                        Gói tập
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                        Thời gian
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                        Thanh toán
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                        Thời hạn còn lại
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">
-                        Hành động
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {pendingSubscriptions.map((subscription) => (
-                      <tr key={subscription.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                              <FiUser className="w-5 h-5 text-indigo-600" />
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{subscription.member?.name}</div>
-                              <div className="text-sm text-gray-500">{subscription.member?.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{subscription.membership?.name}</div>
-                          <div className="text-sm text-gray-500">{subscription.membership?.duration} tháng</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">Bắt đầu: {formatDate(subscription.startDate)}</div>
-                          <div className="text-sm text-gray-500">Kết thúc: {formatDate(subscription.endDate)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{subscription.paymentAmount?.toLocaleString('vi-VN')} đ</div>
-                          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            Chờ thanh toán
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{getTimeRemaining(subscription.createdAt)}</div>
-                          <div className="text-xs text-gray-500">Đăng ký lúc: {formatDate(subscription.createdAt)}</div>
-                        </td>
-                        <td className="px-6 py-4 text-right whitespace-nowrap">
-                          <button
-                            onClick={() => {
-                              setConfirmingSubscriptionId(subscription.id);
-                              setShowPaymentConfirm(true);
-                            }}
-                            className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 mr-2"
-                          >
-                            <FiCheck className="w-4 h-4 mr-1" /> Xác nhận
-                          </button>
-                          <button
-                            onClick={() => {
-                              setCancelingSubscriptionId(subscription.id);
-                              setShowCancelSubscription(true);
-                            }}
-                            className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-red-700 bg-white hover:bg-gray-50"
-                          >
-                            <FiX className="w-4 h-4 mr-1" /> Hủy
-                          </button>
-                        </td>
+                <div className="table-container">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          Thành viên
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          Gói tập
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          Thời gian
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          Thanh toán
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          Thời hạn còn lại
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase min-w-[120px]">
+                          Hành động
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {pendingSubscriptions.map((subscription) => (
+                        <tr key={subscription.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 table-cell-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <FiUser className="w-5 h-5 text-indigo-600" />
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">{subscription.member?.name}</div>
+                                <div className="text-sm text-gray-500">{subscription.member?.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 table-cell-nowrap">
+                            <div className="text-sm text-gray-900">{subscription.membership?.name}</div>
+                            <div className="text-sm text-gray-500">{subscription.membership?.duration} tháng</div>
+                          </td>
+                          <td className="px-6 py-4 table-cell-nowrap">
+                            <div className="text-sm text-gray-500">Bắt đầu: {formatDate(subscription.startDate)}</div>
+                            <div className="text-sm text-gray-500">Kết thúc: {formatDate(subscription.endDate)}</div>
+                          </td>
+                          <td className="px-6 py-4 table-cell-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{subscription.paymentAmount?.toLocaleString('vi-VN')} đ</div>
+                            <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              Chờ thanh toán
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 table-cell-nowrap">
+                            <div className="text-sm text-gray-900">{getTimeRemaining(subscription.createdAt)}</div>
+                            <div className="text-xs text-gray-500">Đăng ký lúc: {formatDate(subscription.createdAt)}</div>
+                          </td>
+                          <td className="px-6 py-4 table-cell-nowrap min-w-[120px]">
+                            <div className="action-buttons">
+                              <button
+                                onClick={() => {
+                                  setConfirmingSubscriptionId(subscription.id);
+                                  setShowPaymentConfirm(true);
+                                }}
+                                className="action-button inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                              >
+                                <FiCheck className="w-4 h-4 mr-1 flex-shrink-0" /> 
+                                <span className="button-text-full">Xác nhận</span>
+                                <span className="button-text-short">OK</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setCancelingSubscriptionId(subscription.id);
+                                  setShowCancelSubscription(true);
+                                }}
+                                className="action-button inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-red-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                              >
+                                <FiX className="w-4 h-4 mr-1 flex-shrink-0" /> 
+                                <span className="button-text-full">Hủy</span>
+                                <span className="button-text-short">X</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
+          </>
+        ) : (
+          <>
+            {/* Cancellation Requests Management */}
+            <div className="mb-6">
+              <h2 className="text-xl font-medium text-gray-900">Yêu cầu hủy gói tập</h2>
+              <p className="mt-1 text-gray-500">Quản lý các yêu cầu hủy gói tập từ thành viên.</p>
+            </div>
+
+            {cancellationsError && (
+              <div className="p-4 mb-6 border border-red-300 rounded-md bg-red-50">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <FiX className="h-5 w-5 text-red-400" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-700">{cancellationsError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="overflow-hidden bg-white shadow-sm rounded-lg">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0 sm:space-x-4">
+                  <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FiSearch className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Tìm kiếm theo tên, email, gói tập..."
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    />
+                  </div>
+                  <div className="flex-shrink-0">
+                    <div className="relative inline-block w-full sm:w-auto">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <FiFilter className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="block pl-10 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md w-full"
+                      >
+                        <option value="all">Tất cả trạng thái</option>
+                        <option value="pending">Đang chờ</option>
+                        <option value="approved">Đã duyệt</option>
+                        <option value="rejected">Từ chối</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="table-container">
+                {cancellationsLoading ? (
+                  <div className="p-6 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
+                    <p className="mt-3 text-sm text-gray-500">Đang tải dữ liệu...</p>
+                  </div>
+                ) : (
+                  (() => {
+                    const filteredRequests = cancellationRequests.filter(request => {
+                      const matchesSearch = searchTerm === '' || 
+                        (request.member?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                        (request.member?.email?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                        (request.subscription?.membership?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                        (request.reason?.toLowerCase().includes(searchTerm.toLowerCase()));
+                      
+                      const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
+                      
+                      return matchesSearch && matchesStatus;
+                    });
+
+                    return filteredRequests.length > 0 ? (
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Hội viên
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Gói tập
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Ngày yêu cầu
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Lý do
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Trạng thái
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Thao tác
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filteredRequests.map((request) => (
+                            <tr key={request.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 table-cell-nowrap">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0 h-10 w-10">
+                                    <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                      <FiUser className="h-5 w-5 text-indigo-600" />
+                                    </div>
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900">{request.member?.name || 'N/A'}</div>
+                                    <div className="text-sm text-gray-500">{request.member?.email || 'N/A'}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 table-cell-nowrap">
+                                <div className="text-sm text-gray-900">{request.subscription?.membership?.name || 'N/A'}</div>
+                                <div className="text-sm text-gray-500">
+                                  {request.subscription?.startDate && request.subscription?.endDate ? 
+                                    `${new Date(request.subscription.startDate).toLocaleDateString('vi-VN')} - ${new Date(request.subscription.endDate).toLocaleDateString('vi-VN')}` : 
+                                    'N/A'
+                                  }
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 table-cell-nowrap text-sm text-gray-500">
+                                {formatDate(request.requestDate)}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="text-sm text-gray-900 max-w-xs truncate">
+                                  {request.reason || 'Không có lý do'}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 table-cell-nowrap">
+                                {getStatusDisplay(request.status)}
+                              </td>
+                              <td className="px-6 py-4 table-cell-nowrap text-right text-sm font-medium">
+                                {request.status === 'pending' ? (
+                                  <button
+                                    onClick={() => handleProcessClick(request)}
+                                    className="text-indigo-600 hover:text-indigo-900 px-3 py-1 rounded border border-indigo-600 hover:bg-indigo-50"
+                                  >
+                                    Xử lý
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleProcessClick(request)}
+                                    className="text-gray-600 hover:text-gray-900 px-3 py-1 rounded border border-gray-300 hover:bg-gray-50"
+                                  >
+                                    Chi tiết
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="p-6 text-center">
+                        <FiInfo className="mx-auto h-12 w-12 text-gray-400" />
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">Không có yêu cầu hủy</h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {searchTerm || statusFilter !== 'all' 
+                            ? 'Không tìm thấy yêu cầu nào khớp với bộ lọc của bạn.' 
+                            : 'Hiện tại không có yêu cầu hủy gói tập nào.'}
+                        </p>
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+            </div>
           </>
         )}
       </main>
@@ -1387,6 +1874,121 @@ export default function MembershipManagement() {
                   className="inline-flex justify-center w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm"
                 >
                   Quay lại
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Process Cancellation Request Modal */}
+      {isProcessModalOpen && selectedRequest && (
+        <div className="fixed inset-0 z-50 overflow-y-auto modal-overlay">
+          <div className="flex items-center justify-center min-h-screen p-4 text-center">
+            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => !isApproving && !isRejecting && closeProcessModal()}></div>
+            
+            <div className="inline-block w-full max-w-lg p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg modal-container">
+              <div className="absolute top-0 right-0 pt-4 pr-4">
+                <button
+                  type="button"
+                  className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  onClick={closeProcessModal}
+                  disabled={isApproving || isRejecting}
+                >
+                  <span className="sr-only">Đóng</span>
+                  <FiX className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                      {selectedRequest.status === 'pending' ? 'Xử lý yêu cầu hủy gói tập' : 'Chi tiết yêu cầu hủy gói tập'}
+                    </h3>
+                    
+                    <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Hội viên</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{selectedRequest.member?.name || 'N/A'}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Gói tập</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{selectedRequest.subscription?.membership?.name || 'N/A'}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Ngày yêu cầu</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{formatDate(selectedRequest.requestDate)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Trạng thái</dt>
+                        <dd className="mt-1">{getStatusDisplay(selectedRequest.status)}</dd>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <dt className="text-sm font-medium text-gray-500">Lý do</dt>
+                        <dd className="mt-1 text-sm text-gray-900 whitespace-pre-line">{selectedRequest.reason || 'Không có lý do'}</dd>
+                      </div>
+                      
+                      {selectedRequest.status !== 'pending' && (
+                        <>
+                          <div className="sm:col-span-2">
+                            <dt className="text-sm font-medium text-gray-500">Ghi chú của quản trị viên</dt>
+                            <dd className="mt-1 text-sm text-gray-900 whitespace-pre-line">{selectedRequest.adminNote || 'Không có ghi chú'}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-sm font-medium text-gray-500">Ngày xử lý</dt>
+                            <dd className="mt-1 text-sm text-gray-900">{selectedRequest.processedDate ? formatDate(selectedRequest.processedDate) : 'N/A'}</dd>
+                          </div>
+                        </>
+                      )}
+                      
+                      {selectedRequest.status === 'pending' && (
+                        <div className="sm:col-span-2">
+                          <label htmlFor="admin-note" className="block text-sm font-medium text-gray-700">
+                            Ghi chú (nếu có)
+                          </label>
+                          <textarea
+                            id="admin-note"
+                            name="admin-note"
+                            rows={3}
+                            value={processingNote}
+                            onChange={(e) => setProcessingNote(e.target.value)}
+                            className="mt-1 shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
+                            placeholder="Thêm ghi chú cho quyết định của bạn..."
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                {selectedRequest.status === 'pending' ? (
+                  <>
+                    <button
+                      type="button"
+                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm"
+                      onClick={handleApprove}
+                      disabled={isApproving || isRejecting}
+                    >
+                      {isApproving ? 'Đang xử lý...' : 'Duyệt yêu cầu'}
+                    </button>
+                    <button
+                      type="button"
+                      className="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                      onClick={handleReject}
+                      disabled={isApproving || isRejecting}
+                    >
+                      {isRejecting ? 'Đang xử lý...' : 'Từ chối'}
+                    </button>
+                  </>
+                ) : null}
+                <button
+                  type="button"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={closeProcessModal}
+                  disabled={isApproving || isRejecting}
+                >
+                  {selectedRequest.status === 'pending' ? 'Hủy' : 'Đóng'}
                 </button>
               </div>
             </div>

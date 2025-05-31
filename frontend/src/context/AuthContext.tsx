@@ -132,7 +132,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 error: null,
               });
             } else {
-              console.log('Token invalid according to server');
+              console.log('Token invalid according to server response');
               clearAuthData();
               
               setAuth({
@@ -145,8 +145,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
           } catch (error) {
             console.error('Error verifying token with server:', error);
-            // Continue using data saved in localStorage
-            setAuth(prev => ({ ...prev, isLoading: false }));
+            // Force clear token and auth state on verification error
+            clearAuthData();
+            
+            setAuth({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+            });
           }
         } else {
           console.log('No valid token found in localStorage');
@@ -210,10 +218,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } catch (error: any) {
+      console.error('Login error:', error);
+      
+      let errorMessage = 'Đăng nhập thất bại';
+      
+      if (error.response?.data?.message) {
+        // Server returned an error message
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        // Generic error message
+        errorMessage = error.message;
+      } else if (error.request) {
+        // Network error
+        errorMessage = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.';
+      }
+      
       setAuth((prev) => ({
         ...prev,
         isLoading: false,
-        error: error.message || 'Login failed',
+        error: errorMessage,
       }));
     }
   };

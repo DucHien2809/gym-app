@@ -71,33 +71,61 @@ exports.checkIn = async (req, res) => {
   try {
     const { memberId, notes } = req.body;
 
+    console.log('Check-in request:', { memberId, notes, userId: req.user?.id });
+
     // Kiểm tra thành viên tồn tại
     const member = await prisma.user.findUnique({
       where: { id: memberId }
     });
 
     if (!member) {
+      console.log('Member not found:', memberId);
       return res.status(404).json({
         status: 'fail',
         message: 'Không tìm thấy thành viên',
       });
     }
 
-    // Kiểm tra thành viên có gói tập đang hoạt động
-    const currentDate = new Date();
-    const activeSubscription = await prisma.subscription.findFirst({
+    console.log('Member found:', { id: member.id, name: member.name, role: member.role });
+
+    // Kiểm tra thành viên có gói tập đang hoạt động (tạm thời bỏ qua cho admin test)
+    // const currentDate = new Date();
+    // const activeSubscription = await prisma.subscription.findFirst({
+    //   where: {
+    //     memberId,
+    //     active: true,
+    //     startDate: { lte: currentDate },
+    //     endDate: { gte: currentDate },
+    //   }
+    // });
+
+    // console.log('Active subscription check:', { 
+    //   memberId, 
+    //   activeSubscription: activeSubscription ? 'found' : 'not found',
+    //   currentDate: currentDate.toISOString()
+    // });
+
+    // Tạm thời cho phép check-in ngay cả khi không có subscription (để test)
+    // if (!activeSubscription) {
+    //   return res.status(400).json({
+    //     status: 'fail',
+    //     message: 'Thành viên không có gói tập đang hoạt động',
+    //   });
+    // }
+
+    // Kiểm tra xem thành viên đã check-in chưa
+    const existingAttendance = await prisma.attendance.findFirst({
       where: {
         memberId,
-        active: true,
-        startDate: { lte: currentDate },
-        endDate: { gte: currentDate },
+        checkOutTime: null
       }
     });
 
-    if (!activeSubscription) {
+    if (existingAttendance) {
+      console.log('Member already checked in:', existingAttendance.id);
       return res.status(400).json({
         status: 'fail',
-        message: 'Thành viên không có gói tập đang hoạt động',
+        message: 'Thành viên đã điểm danh rồi! Vui lòng check-out trước khi check-in lại.',
       });
     }
 
@@ -107,7 +135,7 @@ exports.checkIn = async (req, res) => {
         memberId,
         checkInTime: new Date(),
         notes: notes || null,
-        createdById: req.user.id,
+        createdById: req.user?.id || null,
       },
       include: {
         member: {
@@ -126,6 +154,8 @@ exports.checkIn = async (req, res) => {
       }
     });
 
+    console.log('Attendance created successfully:', newAttendance.id);
+
     res.status(201).json({
       status: 'success',
       data: {
@@ -133,6 +163,7 @@ exports.checkIn = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error('Error in checkIn controller:', error);
     res.status(400).json({
       status: 'fail',
       message: error.message,

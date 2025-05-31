@@ -97,32 +97,32 @@ export default function MemberProfile() {
     const errors: Record<string, string> = {};
     
     if (!formData.name.trim()) {
-      errors.name = 'Name is required';
+      errors.name = 'Tên là bắt buộc';
     }
     
     if (!formData.email.trim()) {
-      errors.email = 'Email is required';
+      errors.email = 'Email là bắt buộc';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Email is invalid';
+      errors.email = 'Email không hợp lệ';
     }
     
     if (formData.phone && !/^\d{10,11}$/.test(formData.phone.replace(/[\s-]/g, ''))) {
-      errors.phone = 'Phone number must be 10-11 digits';
+      errors.phone = 'Số điện thoại phải có 10-11 chữ số';
     }
     
     if (isChangingPassword) {
       if (!formData.currentPassword) {
-        errors.currentPassword = 'Current password is required';
+        errors.currentPassword = 'Mật khẩu hiện tại là bắt buộc';
       }
       
       if (!formData.newPassword) {
-        errors.newPassword = 'New password is required';
+        errors.newPassword = 'Mật khẩu mới là bắt buộc';
       } else if (formData.newPassword.length < 6) {
-        errors.newPassword = 'Password must be at least 6 characters';
+        errors.newPassword = 'Mật khẩu phải có ít nhất 6 ký tự';
       }
       
       if (formData.newPassword !== formData.confirmPassword) {
-        errors.confirmPassword = 'Passwords do not match';
+        errors.confirmPassword = 'Mật khẩu không khớp';
       }
     }
     
@@ -196,7 +196,7 @@ export default function MemberProfile() {
     setError(null);
     
     try {
-      // Call the actual API to update the user profile
+      // Update profile information
       const response = await userAPI.updateUser(userData!.id, {
         name: formData.name,
         email: formData.email,
@@ -222,9 +222,36 @@ export default function MemberProfile() {
         if (refreshUserData) {
           await refreshUserData();
         }
+
+        // Handle password change if requested
+        if (isChangingPassword && formData.currentPassword && formData.newPassword) {
+          try {
+            await userAPI.updatePassword(userData!.id, {
+              currentPassword: formData.currentPassword,
+              newPassword: formData.newPassword,
+            });
+            
+            setNotification({ type: 'success', message: 'Cập nhật hồ sơ và mật khẩu thành công' });
+          } catch (passwordError: any) {
+            console.error('Error updating password:', passwordError);
+            setNotification({ type: 'success', message: 'Cập nhật hồ sơ thành công' });
+            setError(passwordError.response?.data?.message || 'Không thể cập nhật mật khẩu. Vui lòng thử lại.');
+            return; // Don't close the form if password update failed
+          }
+        } else {
+          setNotification({ type: 'success', message: 'Cập nhật hồ sơ thành công' });
+        }
         
         setIsEditing(false);
-        setNotification({ type: 'success', message: 'Profile updated successfully' });
+        setIsChangingPassword(false);
+        
+        // Clear password fields
+        setFormData({
+          ...formData,
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
         
         // Auto-clear notification after 3 seconds
         setTimeout(() => {
@@ -233,9 +260,9 @@ export default function MemberProfile() {
       } else {
         throw new Error(response?.message || 'Failed to update profile');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating profile:', err);
-      setError('Failed to update profile. Please try again.');
+      setError(err.response?.data?.message || 'Không thể cập nhật hồ sơ. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -272,9 +299,9 @@ export default function MemberProfile() {
                 className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-700 bg-opacity-30 rounded-lg hover:bg-opacity-50 focus:outline-none transition-all duration-200"
               >
                 <FiArrowLeft className="w-5 h-5 mr-2" />
-                Back to Dashboard
+                Về bảng điều khiển
               </motion.button>
-              <h1 className="text-2xl font-bold text-white">My Profile</h1>
+              <h1 className="text-2xl font-bold text-white">Hồ sơ của tôi</h1>
             </div>
             
             {!isEditing && (
@@ -285,7 +312,7 @@ export default function MemberProfile() {
                 className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-700 bg-opacity-30 rounded-lg hover:bg-opacity-50 focus:outline-none transition-all duration-200"
               >
                 <FiEdit className="w-5 h-5 mr-2" />
-                Edit Profile
+                Chỉnh sửa hồ sơ
               </motion.button>
             )}
           </div>
@@ -341,7 +368,7 @@ export default function MemberProfile() {
                 
                 <div className="mt-6 pt-6 border-t border-gray-100">
                   <p className="text-gray-500 text-sm">
-                    Member since {formatDate(userData.createdAt)}
+                    Thành viên từ {formatDate(userData.createdAt)}
                   </p>
                 </div>
               </div>
@@ -358,7 +385,7 @@ export default function MemberProfile() {
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100">
                 <h2 className="text-lg font-medium text-gray-800">
-                  {isEditing ? 'Edit Profile Information' : 'Profile Information'}
+                  {isEditing ? 'Chỉnh sửa thông tin hồ sơ' : 'Thông tin hồ sơ'}
                 </h2>
               </div>
               
@@ -368,7 +395,7 @@ export default function MemberProfile() {
                     <div className="space-y-6">
                       <div>
                         <label htmlFor="name" className="block text-sm font-medium text-gray-700 flex items-center">
-                          <FiUser className="mr-2 text-gray-400" /> Name
+                          <FiUser className="mr-2 text-gray-400" /> Tên
                         </label>
                         <input
                           type="text"
@@ -406,7 +433,7 @@ export default function MemberProfile() {
                       
                       <div>
                         <label htmlFor="phone" className="block text-sm font-medium text-gray-700 flex items-center">
-                          <FiPhone className="mr-2 text-gray-400" /> Phone (optional)
+                          <FiPhone className="mr-2 text-gray-400" /> Số điện thoại (tùy chọn)
                         </label>
                         <input
                           type="tel"
@@ -417,7 +444,7 @@ export default function MemberProfile() {
                           className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 ${
                             formErrors.phone ? 'border-red-500' : ''
                           }`}
-                          placeholder="Your phone number"
+                          placeholder="Số điện thoại của bạn"
                         />
                         {formErrors.phone && (
                           <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>
@@ -426,7 +453,7 @@ export default function MemberProfile() {
                       
                       <div>
                         <label htmlFor="address" className="block text-sm font-medium text-gray-700 flex items-center">
-                          <FiMapPin className="mr-2 text-gray-400" /> Address (optional)
+                          <FiMapPin className="mr-2 text-gray-400" /> Địa chỉ (tùy chọn)
                         </label>
                         <textarea
                           id="address"
@@ -435,13 +462,13 @@ export default function MemberProfile() {
                           value={formData.address}
                           onChange={handleInputChange}
                           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900"
-                          placeholder="Your address"
+                          placeholder="Địa chỉ của bạn"
                         />
                       </div>
                       
                       <div>
                         <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 flex items-center">
-                          <FiCalendar className="mr-2 text-gray-400" /> Date of Birth (optional)
+                          <FiCalendar className="mr-2 text-gray-400" /> Ngày sinh (tùy chọn)
                         </label>
                         <input
                           type="date"
@@ -457,14 +484,14 @@ export default function MemberProfile() {
                       <div className="pt-6 border-t border-gray-100">
                         <div className="flex items-center justify-between">
                           <h3 className="text-lg font-medium text-gray-800 flex items-center">
-                            <FiLock className="mr-2 text-gray-400" /> Change Password
+                            <FiLock className="mr-2 text-gray-400" /> Đổi mật khẩu
                           </h3>
                           <button
                             type="button"
                             onClick={handleTogglePasswordChange}
                             className="text-indigo-600 hover:text-indigo-800 font-medium text-sm"
                           >
-                            {isChangingPassword ? 'Cancel Password Change' : 'Change Password'}
+                            {isChangingPassword ? 'Hủy đổi mật khẩu' : 'Đổi mật khẩu'}
                           </button>
                         </div>
                         
@@ -472,7 +499,7 @@ export default function MemberProfile() {
                           <div className="mt-4 space-y-4">
                             <div>
                               <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
-                                Current Password
+                                Mật khẩu hiện tại
                               </label>
                               <input
                                 type="password"
@@ -491,7 +518,7 @@ export default function MemberProfile() {
                             
                             <div>
                               <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
-                                New Password
+                                Mật khẩu mới
                               </label>
                               <input
                                 type="password"
@@ -510,7 +537,7 @@ export default function MemberProfile() {
                             
                             <div>
                               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                                Confirm New Password
+                                Xác nhận mật khẩu mới
                               </label>
                               <input
                                 type="password"
@@ -544,7 +571,7 @@ export default function MemberProfile() {
                           onClick={handleCancelEdit}
                           className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
                         >
-                          <FiX className="mr-2 h-4 w-4" /> Cancel
+                          <FiX className="mr-2 h-4 w-4" /> Hủy
                         </motion.button>
                         
                         <motion.button
@@ -560,11 +587,11 @@ export default function MemberProfile() {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                               </svg>
-                              Saving...
+                              Đang lưu...
                             </>
                           ) : (
                             <>
-                              <FiSave className="mr-2 h-4 w-4" /> Save Changes
+                              <FiSave className="mr-2 h-4 w-4" /> Lưu thay đổi
                             </>
                           )}
                         </motion.button>
@@ -576,40 +603,40 @@ export default function MemberProfile() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-sm text-gray-500 flex items-center mb-1">
-                          <FiUser className="mr-2 text-indigo-500" /> Name
+                          <FiUser className="mr-2 text-indigo-500" /> Tên
                         </p>
-                        <p className="text-gray-800 font-medium">{userData.name || 'Not provided'}</p>
+                        <p className="text-gray-800 font-medium">{userData.name || 'Chưa cung cấp'}</p>
                       </div>
                       
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-sm text-gray-500 flex items-center mb-1">
                           <FiMail className="mr-2 text-indigo-500" /> Email
                         </p>
-                        <p className="text-gray-800 font-medium">{userData.email || 'Not provided'}</p>
+                        <p className="text-gray-800 font-medium">{userData.email || 'Chưa cung cấp'}</p>
                       </div>
                       
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-sm text-gray-500 flex items-center mb-1">
-                          <FiPhone className="mr-2 text-indigo-500" /> Phone
+                          <FiPhone className="mr-2 text-indigo-500" /> Điện thoại
                         </p>
-                        <p className="text-gray-800 font-medium">{userData.phone || 'Not provided'}</p>
+                        <p className="text-gray-800 font-medium">{userData.phone || 'Chưa cung cấp'}</p>
                       </div>
                       
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-sm text-gray-500 flex items-center mb-1">
-                          <FiCalendar className="mr-2 text-indigo-500" /> Date of Birth
+                          <FiCalendar className="mr-2 text-indigo-500" /> Ngày sinh
                         </p>
                         <p className="text-gray-800 font-medium">
-                          {userData.dateOfBirth ? formatDate(userData.dateOfBirth) : 'Not provided'}
+                          {userData.dateOfBirth ? formatDate(userData.dateOfBirth) : 'Chưa cung cấp'}
                         </p>
                       </div>
                     </div>
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm text-gray-500 flex items-center mb-1">
-                        <FiMapPin className="mr-2 text-indigo-500" /> Address
+                                                  <FiMapPin className="mr-2 text-indigo-500" /> Địa chỉ
                       </p>
-                      <p className="text-gray-800 font-medium">{userData.address || 'Not provided'}</p>
+                                              <p className="text-gray-800 font-medium">{userData.address || 'Chưa cung cấp'}</p>
                     </div>
                   </div>
                 )}

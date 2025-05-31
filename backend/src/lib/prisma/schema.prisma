@@ -1,0 +1,34 @@
+// Model for subscription cancellation requests
+model SubscriptionCancellationRequest {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  subscriptionId String   @db.ObjectId
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  memberId  String   @db.ObjectId
+  member    User     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  requestDate DateTime @default(now())
+  status    String   @default("pending") // pending, approved, rejected
+  reason    String?
+  adminNote String?
+  processedById String? @db.ObjectId
+  processedBy User?   @relation("ProcessedCancellationRequests", fields: [processedById], references: [id], onDelete: SetNull)
+  processedDate DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Update User model to add the new relation
+model User {
+  // ... existing fields ...
+  
+  // Add these new relations
+  cancellationRequests SubscriptionCancellationRequest[] @relation()
+  processedCancellationRequests SubscriptionCancellationRequest[] @relation("ProcessedCancellationRequests")
+}
+
+// Update Subscription model to add the new relation
+model Subscription {
+  // ... existing fields ...
+  
+  // Add this new relation
+  cancellationRequests SubscriptionCancellationRequest[]
+} 

@@ -25,6 +25,7 @@
   --font-mono: monospace;
 }
 
+/* Commented out auto dark mode to prevent white text issues
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0f172a;
@@ -34,11 +35,31 @@
     --gray-800: #e2e8f0;
   }
 }
+*/
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: 'Poppins', sans-serif;
+}
+
+/* Force text visibility for common elements */
+h1, h2, h3, h4, h5, h6, p, span, div, label, button, input, textarea, select {
+  color: inherit;
+}
+
+/* Ensure specific text elements are always visible */
+.text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500, .text-gray-400 {
+  color: var(--gray-800) !important;
+}
+
+/* For elements that should be dark text on light background */
+.bg-white .text-gray-900,
+.bg-white .text-gray-800,
+.bg-white .text-gray-700,
+.bg-white .text-gray-600,
+.bg-white .text-gray-500 {
+  color: #1f2937 !important;
 }
 
 .gradient-text {
@@ -138,4 +159,54 @@ input::placeholder, textarea::placeholder {
 
 .inline-block.transform {
   z-index: 10000 !important;
+}
+
+/* Table improvements for better layout */
+.table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-container table {
+  min-width: 800px; /* Ensure table has minimum width */
+}
+
+/* Action buttons styling */
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 120px;
+}
+
+.action-button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Prevent text wrapping in table cells */
+.table-cell-nowrap {
+  white-space: nowrap;
+}
+
+/* Better responsive table styling */
+@media (max-width: 768px) {
+  .action-buttons .button-text-full {
+    display: none;
+  }
+  
+  .action-buttons .button-text-short {
+    display: inline;
+  }
+}
+
+@media (min-width: 769px) {
+  .action-buttons .button-text-full {
+    display: inline;
+  }
+  
+  .action-buttons .button-text-short {
+    display: none;
+  }
 }

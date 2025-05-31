@@ -1,12 +1,15 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('../src/generated/prisma');
 const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
 async function createAdmins() {
   try {
+    console.log('Connecting to database...');
+    
     // Hash password
     const hashedPassword = await bcrypt.hash('admin123', 12);
+    console.log('Password hashed successfully');
     
     // Danh sách thông tin 3 admin cần tạo
     const adminsData = [
@@ -59,6 +62,7 @@ async function createAdmins() {
     }
     
     console.log('Hoàn thành việc tạo tài khoản admin.');
+    console.log('Mật khẩu cho tất cả admin: admin123');
   } catch (error) {
     console.error('Lỗi khi tạo tài khoản admin:', error);
   } finally {

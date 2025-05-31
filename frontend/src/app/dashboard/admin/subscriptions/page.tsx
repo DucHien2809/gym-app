@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { subscriptionAPI } from '@/services/api';
+import { subscriptionAPI, userAPI, membershipAPI } from '@/services/api';
 import { FiPlus, FiSearch, FiFilter, FiEdit, FiTrash2, FiArrowLeft, FiCheck, FiX, FiDollarSign, FiCalendar, FiUser, FiPackage } from 'react-icons/fi';
 
 interface Subscription {
@@ -33,133 +33,21 @@ interface Subscription {
   };
 }
 
-// Sample data for development
-const sampleSubscriptions: Subscription[] = [
-  {
-    id: '1',
-    memberId: 'member1',
-    membershipId: 'membership1',
-    startDate: '2023-10-01',
-    endDate: '2023-11-01',
-    paymentStatus: 'paid',
-    paymentAmount: 300000,
-    paymentDate: '2023-10-01',
-    paymentMethod: 'cash',
-    active: true,
-    createdAt: '2023-10-01',
-    updatedAt: '2023-10-01',
-    member: {
-      name: 'Nguyễn Văn A',
-      email: 'nguyenvana@gmail.com',
-      phone: '0901234567',
-      avatar: 'https://randomuser.me/api/portraits/men/1.jpg'
-    },
-    membership: {
-      name: 'Basic',
-      duration: 1,
-      price: 300000
-    }
-  },
-  {
-    id: '2',
-    memberId: 'member2',
-    membershipId: 'membership2',
-    startDate: '2023-09-15',
-    endDate: '2023-12-15',
-    paymentStatus: 'paid',
-    paymentAmount: 800000,
-    paymentDate: '2023-09-15',
-    paymentMethod: 'bank_transfer',
-    active: true,
-    createdAt: '2023-09-15',
-    updatedAt: '2023-09-15',
-    member: {
-      name: 'Trần Thị B',
-      email: 'tranthib@gmail.com',
-      phone: '0912345678',
-      avatar: 'https://randomuser.me/api/portraits/women/2.jpg'
-    },
-    membership: {
-      name: 'Standard',
-      duration: 3,
-      price: 800000
-    }
-  },
-  {
-    id: '3',
-    memberId: 'member3',
-    membershipId: 'membership3',
-    startDate: '2023-08-01',
-    endDate: '2024-08-01',
-    paymentStatus: 'paid',
-    paymentAmount: 2500000,
-    paymentDate: '2023-08-01',
-    paymentMethod: 'credit_card',
-    active: true,
-    createdAt: '2023-08-01',
-    updatedAt: '2023-08-01',
-    member: {
-      name: 'Lê Văn C',
-      email: 'levanc@gmail.com',
-      phone: '0923456789',
-      avatar: 'https://randomuser.me/api/portraits/men/3.jpg'
-    },
-    membership: {
-      name: 'Premium',
-      duration: 12,
-      price: 2500000
-    }
-  },
-  {
-    id: '4',
-    memberId: 'member4',
-    membershipId: 'membership1',
-    startDate: '2023-10-10',
-    endDate: '2023-11-10',
-    paymentStatus: 'pending',
-    paymentAmount: 300000,
-    paymentMethod: 'cash',
-    active: true,
-    createdAt: '2023-10-10',
-    updatedAt: '2023-10-10',
-    member: {
-      name: 'Phạm Thị D',
-      email: 'phamthid@gmail.com',
-      phone: '0934567890',
-      avatar: 'https://randomuser.me/api/portraits/women/4.jpg'
-    },
-    membership: {
-      name: 'Basic',
-      duration: 1,
-      price: 300000
-    }
-  },
-  {
-    id: '5',
-    memberId: 'member5',
-    membershipId: 'membership2',
-    startDate: '2023-07-01',
-    endDate: '2023-10-01',
-    paymentStatus: 'expired',
-    paymentAmount: 800000,
-    paymentDate: '2023-07-01',
-    paymentMethod: 'bank_transfer',
-    active: false,
-    createdAt: '2023-07-01',
-    updatedAt: '2023-10-01',
-    member: {
-      name: 'Hoàng Văn E',
-      email: 'hoangvane@gmail.com',
-      phone: '0945678901',
-      avatar: 'https://randomuser.me/api/portraits/men/5.jpg'
-    },
-    membership: {
-      name: 'Standard',
-      duration: 3,
-      price: 800000
-    }
-  }
-];
+interface Member {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+}
+
+interface Membership {
+  id: string;
+  name: string;
+  duration: number;
+  price: number;
+}
+
+
 
 export default function SubscriptionManagement() {
   const { auth } = useAuth();
@@ -195,21 +83,9 @@ export default function SubscriptionManagement() {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   
-  // Danh sách thành viên và gói tập mẫu
-  const [members, setMembers] = useState([
-    { id: 'member1', name: 'Nguyễn Văn A', email: 'nguyenvana@gmail.com', phone: '0901234567' },
-    { id: 'member2', name: 'Trần Thị B', email: 'tranthib@gmail.com', phone: '0912345678' },
-    { id: 'member3', name: 'Lê Văn C', email: 'levanc@gmail.com', phone: '0923456789' },
-    { id: 'member4', name: 'Phạm Thị D', email: 'phamthid@gmail.com', phone: '0934567890' },
-    { id: 'member5', name: 'Hoàng Văn E', email: 'hoangvane@gmail.com', phone: '0945678901' },
-    { id: 'member6', name: 'Võ Thị F', email: 'vothif@gmail.com', phone: '0956789012' }
-  ]);
-  
-  const [memberships, setMemberships] = useState([
-    { id: 'membership1', name: 'Basic', duration: 1, price: 300000 },
-    { id: 'membership2', name: 'Standard', duration: 3, price: 800000 },
-    { id: 'membership3', name: 'Premium', duration: 12, price: 2500000 }
-  ]);
+  // Danh sách thành viên và gói tập từ API
+  const [members, setMembers] = useState<Member[]>([]);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
 
   useEffect(() => {
     // Kiểm tra xác thực
@@ -224,43 +100,75 @@ export default function SubscriptionManagement() {
       return;
     }
 
-    // Lấy dữ liệu đăng ký
-    const fetchSubscriptions = async () => {
+    // Lấy dữ liệu đăng ký, thành viên và gói tập
+    const fetchData = async () => {
       try {
         setLoading(true);
         
-        // Kiểm tra xem có dữ liệu trong localStorage không
-        const savedSubscriptions = localStorage.getItem('gymSubscriptions');
-        if (savedSubscriptions) {
-          setSubscriptions(JSON.parse(savedSubscriptions));
-          setLoading(false);
-          return;
+        // Gọi API để lấy subscriptions
+        const subscriptionsResponse = await subscriptionAPI.getAllSubscriptions();
+        if (subscriptionsResponse.status === 'success' && subscriptionsResponse.data?.subscriptions) {
+          const subscriptionsData = subscriptionsResponse.data.subscriptions as unknown as Subscription[];
+          setSubscriptions(subscriptionsData);
+        } else {
+          setSubscriptions([]);
         }
 
-        // Gọi API
-        const response = await subscriptionAPI.getAllSubscriptions();
-        if (response.status === 'success' && response.data?.subscriptions) {
-          const subscriptionsData = response.data.subscriptions as unknown as Subscription[];
-          setSubscriptions(subscriptionsData);
-          localStorage.setItem('gymSubscriptions', JSON.stringify(subscriptionsData));
-        } else {
-          // Sử dụng dữ liệu mẫu khi API không trả về kết quả
-          setSubscriptions(sampleSubscriptions);
-          localStorage.setItem('gymSubscriptions', JSON.stringify(sampleSubscriptions));
+        // Gọi API để lấy danh sách thành viên
+        try {
+          const usersResponse = await userAPI.getAllUsers();
+          if (usersResponse.status === 'success' && usersResponse.data?.users && Array.isArray(usersResponse.data.users)) {
+            // Lọc chỉ lấy members, không lấy trainer hay admin
+            const usersList = usersResponse.data.users as any[];
+            const filteredUsers = usersList
+              .filter((user: any) => user.role === 'member')
+              .map((user: any) => ({
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone || ''
+              }));
+            setMembers(filteredUsers);
+          } else {
+            setMembers([]);
+          }
+        } catch (memberError) {
+          console.error('Error fetching members:', memberError);
+          setMembers([]);
         }
+
+        // Gọi API để lấy danh sách gói tập
+        try {
+          const membershipsResponse = await membershipAPI.getAllMemberships();
+          if (membershipsResponse.status === 'success' && membershipsResponse.data?.memberships && Array.isArray(membershipsResponse.data.memberships)) {
+            const membershipsArray = membershipsResponse.data.memberships as any[];
+            const membershipsList = membershipsArray.map((membership: any) => ({
+              id: membership.id,
+              name: membership.name,
+              duration: membership.duration,
+              price: membership.price
+            }));
+            setMemberships(membershipsList);
+          } else {
+            setMemberships([]);
+          }
+        } catch (membershipError) {
+          console.error('Error fetching memberships:', membershipError);
+          setMemberships([]);
+        }
+
       } catch (err) {
-        setError('Không thể tải dữ liệu đăng ký. Vui lòng thử lại sau.');
-        console.error('Error fetching subscriptions:', err);
-        
-        // Sử dụng dữ liệu mẫu khi có lỗi
-        setSubscriptions(sampleSubscriptions);
-        localStorage.setItem('gymSubscriptions', JSON.stringify(sampleSubscriptions));
+        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
+        console.error('Error fetching data:', err);
+        setSubscriptions([]);
+        setMembers([]);
+        setMemberships([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSubscriptions();
+    fetchData();
   }, [auth.isAuthenticated, auth.user, router]);
 
   const handleBack = () => {
@@ -332,11 +240,7 @@ export default function SubscriptionManagement() {
 
   // Đóng modal form
   const closeFormModal = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsFormModalOpen(false);
-      setIsClosing(false);
-    }, 200);
+    setIsFormModalOpen(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -421,7 +325,7 @@ export default function SubscriptionManagement() {
   };
 
   // Xử lý submit form
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -475,43 +379,31 @@ export default function SubscriptionManagement() {
         }
       };
       
-      // Giả lập gọi API
-      setTimeout(() => {
-        let updatedSubscriptions;
-        
-        if (isEditing && selectedSubscriptionId) {
-          // Cập nhật đăng ký
-          updatedSubscriptions = subscriptions.map(subscription => {
-            if (subscription.id === selectedSubscriptionId) {
-              return {
-                ...subscription,
-                ...subscriptionData,
-                updatedAt: new Date().toISOString()
-              };
-            }
-            return subscription;
-          });
-          
-          alert('Cập nhật đăng ký thành công!');
+              if (isEditing && selectedSubscriptionId) {
+          // Hiện tại API chưa có method update subscription, chỉ có updatePaymentStatus
+          // TODO: Cần thêm API updateSubscription khi backend hỗ trợ
+          alert('Chức năng cập nhật đăng ký chưa được hỗ trợ bởi API.');
         } else {
-          // Thêm mới đăng ký
-          const newSubscription = {
-            id: Date.now().toString(),
-            ...subscriptionData
-          } as Subscription;
-          
-          updatedSubscriptions = [...subscriptions, newSubscription];
-          alert('Thêm đăng ký mới thành công!');
+          // Gọi API thêm mới đăng ký
+          try {
+            const response = await subscriptionAPI.createSubscription(subscriptionData);
+            if (response.status === 'success' && response.data?.subscription) {
+              // Thêm vào state
+              const newSubscription = response.data.subscription as unknown as Subscription;
+              setSubscriptions([...subscriptions, newSubscription]);
+              alert('Thêm đăng ký mới thành công!');
+            } else {
+              throw new Error(response.message || 'Thêm mới thất bại');
+            }
+          } catch (apiError) {
+            console.error('API Error:', apiError);
+            alert('Có lỗi xảy ra khi thêm mới. Vui lòng thử lại.');
+          }
         }
-        
-        // Cập nhật state và localStorage
-        setSubscriptions(updatedSubscriptions);
-        localStorage.setItem('gymSubscriptions', JSON.stringify(updatedSubscriptions));
         
         // Đóng modal
         closeFormModal();
         setIsSubmitting(false);
-      }, 1000);
       
     } catch (error) {
       console.error('Error handling subscription:', error);
@@ -520,18 +412,28 @@ export default function SubscriptionManagement() {
     }
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!selectedSubscriptionId) return;
     
-    const updatedSubscriptions = subscriptions.filter(
-      subscription => subscription.id !== selectedSubscriptionId
-    );
-    
-    setSubscriptions(updatedSubscriptions);
-    localStorage.setItem('gymSubscriptions', JSON.stringify(updatedSubscriptions));
+    try {
+      // Gọi API để xóa subscription
+      const response = await subscriptionAPI.cancelSubscription(selectedSubscriptionId);
+      if (response.status === 'success') {
+        // Xóa khỏi state
+        const updatedSubscriptions = subscriptions.filter(
+          subscription => subscription.id !== selectedSubscriptionId
+        );
+        setSubscriptions(updatedSubscriptions);
+        alert('Đã xóa đăng ký thành công!');
+      } else {
+        throw new Error(response.message || 'Xóa thất bại');
+      }
+    } catch (error) {
+      console.error('Error deleting subscription:', error);
+      alert('Có lỗi xảy ra khi xóa đăng ký. Vui lòng thử lại.');
+    }
     
     closeDeleteModal();
-    alert('Đã xóa đăng ký thành công!');
   };
 
   // Lọc đăng ký theo trạng thái và từ khóa tìm kiếm
@@ -962,215 +864,205 @@ export default function SubscriptionManagement() {
 
       {/* Modal thêm/sửa đăng ký */}
       {isFormModalOpen && (
-        <div className="fixed z-50 inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Overlay */}
-            <div 
-              className={`fixed inset-0 bg-gray-500 transition-opacity ${isClosing ? 'bg-opacity-0' : 'bg-opacity-75'}`}
-              style={{ transitionDuration: '200ms' }}
-              aria-hidden="true" 
-              onClick={closeFormModal}
-            ></div>
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={closeFormModal}
+        >
+          <div 
+            className="bg-white rounded-lg p-0 w-full max-w-2xl mx-4 shadow-xl max-h-screen overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 flex justify-between items-center">
+              <h3 className="text-lg font-medium text-white">
+                {isEditing ? 'Sửa đăng ký' : 'Thêm đăng ký mới'}
+              </h3>
+              <button 
+                onClick={closeFormModal}
+                className="text-white hover:text-gray-200"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
             
-            {/* Trick để căn giữa modal */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
-            {/* Modal Panel */}
-            <div 
-              className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${isClosing ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
-              style={{ transitionDuration: '200ms' }}
-            >
-              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 sm:px-6 flex justify-between items-center">
-                <h3 className="text-lg leading-6 font-medium text-white">
-                  {isEditing ? 'Sửa đăng ký' : 'Thêm đăng ký mới'}
-                </h3>
-                <button 
-                  onClick={closeFormModal}
-                  className="bg-transparent rounded-full p-1 inline-flex items-center justify-center text-white hover:bg-white hover:bg-opacity-20 focus:outline-none"
-                >
-                  <FiX className="h-5 w-5" />
-                </button>
-              </div>
-              
-              <form onSubmit={handleFormSubmit}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="space-y-4">
-                    {/* Thành viên */}
-                    <div>
-                      <label htmlFor="memberId" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                        <FiUser className="mr-1 text-gray-600" /> Thành viên
-                      </label>
-                      <select
-                        id="memberId"
-                        name="memberId"
-                        value={formData.memberId}
-                        onChange={handleInputChange}
-                        disabled={isEditing}
-                        className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700 ${formErrors.memberId ? 'border-red-500' : ''}`}
-                      >
-                        <option value="">Chọn thành viên</option>
-                        {members.map(member => (
-                          <option key={member.id} value={member.id}>
-                            {member.name} ({member.email})
-                          </option>
-                        ))}
-                      </select>
-                      {formErrors.memberId && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.memberId}</p>
-                      )}
-                      
-                      {formData.memberId && (
-                        <div className="mt-2 p-2 bg-gray-50 rounded-md">
-                          <p className="text-sm text-gray-700"><strong>Email:</strong> {formData.memberEmail}</p>
-                          {formData.memberPhone && (
-                            <p className="text-sm text-gray-700"><strong>Điện thoại:</strong> {formData.memberPhone}</p>
-                          )}
-                        </div>
+            {/* Form */}
+            <form onSubmit={handleFormSubmit} className="p-6">
+              <div className="space-y-4">
+                {/* Thành viên */}
+                <div>
+                  <label htmlFor="memberId" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <FiUser className="mr-1 text-gray-600" /> Thành viên
+                  </label>
+                  <select
+                    id="memberId"
+                    name="memberId"
+                    value={formData.memberId}
+                    onChange={handleInputChange}
+                    disabled={isEditing}
+                    className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700 ${formErrors.memberId ? 'border-red-500' : ''}`}
+                  >
+                    <option value="">Chọn thành viên</option>
+                    {members.map(member => (
+                      <option key={member.id} value={member.id}>
+                        {member.name} ({member.email})
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.memberId && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.memberId}</p>
+                  )}
+                  
+                  {formData.memberId && (
+                    <div className="mt-2 p-2 bg-gray-50 rounded-md">
+                      <p className="text-sm text-gray-700"><strong>Email:</strong> {formData.memberEmail}</p>
+                      {formData.memberPhone && (
+                        <p className="text-sm text-gray-700"><strong>Điện thoại:</strong> {formData.memberPhone}</p>
                       )}
                     </div>
+                  )}
+                </div>
 
-                    {/* Gói tập */}
-                    <div>
-                      <label htmlFor="membershipId" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                        <FiPackage className="mr-1 text-gray-600" /> Gói tập
-                      </label>
-                      <select
-                        id="membershipId"
-                        name="membershipId"
-                        value={formData.membershipId}
-                        onChange={handleInputChange}
-                        className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700 ${formErrors.membershipId ? 'border-red-500' : ''}`}
-                      >
-                        <option value="">Chọn gói tập</option>
-                        {memberships.map(membership => (
-                          <option key={membership.id} value={membership.id}>
-                            {membership.name} ({membership.duration} tháng - {membership.price.toLocaleString('vi-VN')} đ)
-                          </option>
-                        ))}
-                      </select>
-                      {formErrors.membershipId && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.membershipId}</p>
-                      )}
-                    </div>
+                {/* Gói tập */}
+                <div>
+                  <label htmlFor="membershipId" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <FiPackage className="mr-1 text-gray-600" /> Gói tập
+                  </label>
+                  <select
+                    id="membershipId"
+                    name="membershipId"
+                    value={formData.membershipId}
+                    onChange={handleInputChange}
+                    className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700 ${formErrors.membershipId ? 'border-red-500' : ''}`}
+                  >
+                    <option value="">Chọn gói tập</option>
+                    {memberships.map(membership => (
+                      <option key={membership.id} value={membership.id}>
+                        {membership.name} ({membership.duration} tháng - {membership.price.toLocaleString('vi-VN')} đ)
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.membershipId && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.membershipId}</p>
+                  )}
+                </div>
 
-                    {/* Ngày bắt đầu */}
-                    <div>
-                      <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                        <FiCalendar className="mr-1 text-gray-600" /> Ngày bắt đầu
-                      </label>
-                      <input
-                        type="date"
-                        id="startDate"
-                        name="startDate"
-                        value={formData.startDate}
-                        onChange={handleInputChange}
-                        className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700 ${formErrors.startDate ? 'border-red-500' : ''}`}
-                      />
-                      {formErrors.startDate && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.startDate}</p>
-                      )}
-                    </div>
+                {/* Ngày bắt đầu */}
+                <div>
+                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <FiCalendar className="mr-1 text-gray-600" /> Ngày bắt đầu
+                  </label>
+                  <input
+                    type="date"
+                    id="startDate"
+                    name="startDate"
+                    value={formData.startDate}
+                    onChange={handleInputChange}
+                    className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700 ${formErrors.startDate ? 'border-red-500' : ''}`}
+                  />
+                  {formErrors.startDate && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.startDate}</p>
+                  )}
+                </div>
 
-                    {/* Thanh toán */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="paymentAmount" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                          <FiDollarSign className="mr-1 text-gray-600" /> Số tiền (VNĐ)
-                        </label>
-                        <input
-                          type="number"
-                          id="paymentAmount"
-                          name="paymentAmount"
-                          value={formData.paymentAmount}
-                          onChange={handleInputChange}
-                          className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700 ${formErrors.paymentAmount ? 'border-red-500' : ''}`}
-                        />
-                        {formErrors.paymentAmount && (
-                          <p className="mt-1 text-sm text-red-600">{formErrors.paymentAmount}</p>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <label htmlFor="paymentStatus" className="block text-sm font-medium text-gray-700 mb-1">
-                          Trạng thái
-                        </label>
-                        <select
-                          id="paymentStatus"
-                          name="paymentStatus"
-                          value={formData.paymentStatus}
-                          onChange={handleInputChange}
-                          className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700"
-                        >
-                          <option value="pending">Chờ thanh toán</option>
-                          <option value="paid">Đã thanh toán</option>
-                          <option value="expired">Đã hết hạn</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Phương thức thanh toán */}
-                    <div>
-                      <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700 mb-1">
-                        Phương thức thanh toán
-                      </label>
-                      <select
-                        id="paymentMethod"
-                        name="paymentMethod"
-                        value={formData.paymentMethod}
-                        onChange={handleInputChange}
-                        className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700"
-                      >
-                        <option value="cash">Tiền mặt</option>
-                        <option value="bank_transfer">Chuyển khoản</option>
-                        <option value="credit_card">Thẻ tín dụng</option>
-                      </select>
-                    </div>
-
-                    {/* Ghi chú */}
-                    <div>
-                      <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-                        Ghi chú
-                      </label>
-                      <textarea
-                        id="notes"
-                        name="notes"
-                        rows={3}
-                        value={formData.notes}
-                        onChange={handleInputChange}
-                        className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700"
-                        placeholder="Nhập ghi chú nếu có..."
-                      />
-                    </div>
+                {/* Thanh toán */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="paymentAmount" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                      <FiDollarSign className="mr-1 text-gray-600" /> Số tiền (VNĐ)
+                    </label>
+                    <input
+                      type="number"
+                      id="paymentAmount"
+                      name="paymentAmount"
+                      value={formData.paymentAmount}
+                      onChange={handleInputChange}
+                      className={`shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700 ${formErrors.paymentAmount ? 'border-red-500' : ''}`}
+                    />
+                    {formErrors.paymentAmount && (
+                      <p className="mt-1 text-sm text-red-600">{formErrors.paymentAmount}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="paymentStatus" className="block text-sm font-medium text-gray-700 mb-1">
+                      Trạng thái
+                    </label>
+                    <select
+                      id="paymentStatus"
+                      name="paymentStatus"
+                      value={formData.paymentStatus}
+                      onChange={handleInputChange}
+                      className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700"
+                    >
+                      <option value="pending">Chờ thanh toán</option>
+                      <option value="paid">Đã thanh toán</option>
+                      <option value="expired">Đã hết hạn</option>
+                    </select>
                   </div>
                 </div>
-                
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+
+                {/* Phương thức thanh toán */}
+                <div>
+                  <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700 mb-1">
+                    Phương thức thanh toán
+                  </label>
+                  <select
+                    id="paymentMethod"
+                    name="paymentMethod"
+                    value={formData.paymentMethod}
+                    onChange={handleInputChange}
+                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700"
                   >
-                    {isSubmitting ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Đang xử lý...
-                      </>
-                    ) : isEditing ? 'Cập nhật' : 'Thêm đăng ký'}
-                  </button>
-                  <button
-                    type="button"
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                    onClick={closeFormModal}
-                    disabled={isSubmitting}
-                  >
-                    Hủy
-                  </button>
+                    <option value="cash">Tiền mặt</option>
+                    <option value="bank_transfer">Chuyển khoản</option>
+                    <option value="credit_card">Thẻ tín dụng</option>
+                  </select>
                 </div>
-              </form>
-            </div>
+
+                {/* Ghi chú */}
+                <div>
+                  <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+                    Ghi chú
+                  </label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    rows={3}
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                    className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700"
+                    placeholder="Nhập ghi chú nếu có..."
+                  />
+                </div>
+              </div>
+              
+              {/* Footer */}
+              <div className="flex justify-end space-x-2 mt-6 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={closeFormModal}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang xử lý...
+                    </>
+                  ) : isEditing ? 'Cập nhật' : 'Thêm đăng ký'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1262,6 +1154,8 @@ export default function SubscriptionManagement() {
           </div>
         </div>
       )}
+
+
     </div>
   );
 } 

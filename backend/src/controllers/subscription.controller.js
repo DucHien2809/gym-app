@@ -140,6 +140,14 @@ exports.getSubscription = async (req, res) => {
 // Tạo đăng ký tập mới
 exports.createSubscription = async (req, res) => {
   try {
+    // Kiểm tra quyền - nếu là member thì chỉ được tạo đăng ký cho chính mình
+    if (req.user.role === 'member' && req.body.memberId !== req.user.id) {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Bạn chỉ có thể đăng ký gói tập cho chính mình',
+      });
+    }
+
     // Kiểm tra thành viên và gói tập tồn tại
     const member = await prisma.user.findUnique({
       where: { id: req.body.memberId || req.body.member }
@@ -288,9 +296,8 @@ exports.updatePaymentStatus = async (req, res) => {
 // Hủy đăng ký
 exports.cancelSubscription = async (req, res) => {
   try {
-    await prisma.subscription.update({
-      where: { id: req.params.id },
-      data: { active: false },
+    await prisma.subscription.delete({
+      where: { id: req.params.id }
     });
 
     res.status(200).json({

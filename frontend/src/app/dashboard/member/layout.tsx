@@ -12,13 +12,14 @@ export default function MemberDashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { auth } = useAuth();
+  const { auth, logout } = useAuth();
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard/member', current: pathname === '/dashboard/member' },
-    { name: 'Profile', href: '/dashboard/member/profile', current: pathname === '/dashboard/member/profile' },
-    { name: 'Subscriptions', href: '/dashboard/member/subscriptions', current: pathname === '/dashboard/member/subscriptions' },
-    { name: 'Attendance', href: '/dashboard/member/attendance', current: pathname === '/dashboard/member/attendance' },
+    { name: 'Bảng điều khiển', href: '/dashboard/member', current: pathname === '/dashboard/member' },
+    { name: 'Hồ sơ', href: '/dashboard/member/profile', current: pathname === '/dashboard/member/profile' },
+    { name: 'Gói đăng ký', href: '/dashboard/member/subscriptions', current: pathname === '/dashboard/member/subscriptions' },
+    { name: 'Điểm danh', href: '/dashboard/member/attendance', current: pathname === '/dashboard/member/attendance' },
+    { name: 'Lịch hẹn', href: '/dashboard/member/appointments', current: pathname === '/dashboard/member/appointments' },
   ];
 
   return (
@@ -28,7 +29,7 @@ export default function MemberDashboardLayout({
           <nav className="flex items-center justify-between p-4 lg:px-8" aria-label="Global">
             <div className="flex lg:flex-1">
               <Link href="/" className="-m-1.5 p-1.5 text-white font-bold text-xl">
-                GYM MANAGEMENT
+                QUẢN LÝ PHÒNG TẬP
               </Link>
             </div>
             <div className="flex gap-x-6">
@@ -46,8 +47,14 @@ export default function MemberDashboardLayout({
                 </Link>
               ))}
             </div>
-            <div className="flex lg:flex-1 lg:justify-end">
+            <div className="flex lg:flex-1 lg:justify-end items-center">
               <span className="text-white mr-2">{auth.user?.name}</span>
+              <button
+                onClick={logout}
+                className="ml-2 px-3 py-1 bg-white text-blue-700 rounded-md font-medium hover:bg-blue-50 transition"
+              >
+                Đăng xuất
+              </button>
             </div>
           </nav>
         </div>

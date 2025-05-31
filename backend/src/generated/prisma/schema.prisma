@@ -29,10 +29,20 @@ model User {
   updatedAt    DateTime  @updatedAt
 
   // Relations
-  subscriptions        Subscription[] @relation("MemberSubscriptions")
-  attendances          Attendance[]   @relation("MemberAttendances")
-  createdSubscriptions Subscription[] @relation("SubscriptionCreatedBy")
-  createdAttendances   Attendance[]   @relation("AttendanceCreatedBy")
+  subscriptions          Subscription[]   @relation("MemberSubscriptions")
+  attendances            Attendance[]     @relation("MemberAttendances")
+  createdSubscriptions   Subscription[]   @relation("SubscriptionCreatedBy")
+  createdAttendances     Attendance[]     @relation("AttendanceCreatedBy")
+  createdEquipment       Equipment[]      @relation("EquipmentCreatedBy")
+  createdMaintenanceLogs MaintenanceLog[] @relation("MaintenanceLogCreatedBy")
+
+  // Cancellation relations
+  cancellationRequests          SubscriptionCancellationRequest[] @relation("MemberCancellationRequests")
+  processedCancellationRequests SubscriptionCancellationRequest[] @relation("ProcessedCancellationRequests")
+
+  // Appointment relations
+  memberAppointments  Appointment[] @relation("MemberAppointments")
+  trainerAppointments Appointment[] @relation("TrainerAppointments")
 }
 
 model Membership {
@@ -70,6 +80,9 @@ model Subscription {
   member     User       @relation("MemberSubscriptions", fields: [memberId], references: [id])
   membership Membership @relation("MembershipSubscriptions", fields: [membershipId], references: [id])
   createdBy  User?      @relation("SubscriptionCreatedBy", fields: [createdById], references: [id])
+
+  // Cancellation relation
+  cancellationRequests SubscriptionCancellationRequest[] @relation("SubscriptionCancellationRequests")
 }
 
 model Attendance {
@@ -85,4 +98,87 @@ model Attendance {
   // Relations
   member    User  @relation("MemberAttendances", fields: [memberId], references: [id])
   createdBy User? @relation("AttendanceCreatedBy", fields: [createdById], references: [id])
+}
+
+model Equipment {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  description     String
+  category        String // e.g., "Cardio", "Strength", "Flexibility"
+  purchaseDate    DateTime
+  purchasePrice   Float
+  manufacturer    String
+  model           String?
+  serialNumber    String?
+  status          String    @default("available") // available, in-use, maintenance, retired
+  location        String? // e.g., "Main floor", "Weight room", etc.
+  lastMaintenance DateTime?
+  nextMaintenance DateTime?
+  image           String?   @default("default-equipment.jpg")
+  notes           String?
+  createdById     String?   @db.ObjectId
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  maintenanceLogs MaintenanceLog[] @relation("EquipmentMaintenance")
+  createdBy       User?            @relation("EquipmentCreatedBy", fields: [createdById], references: [id])
+}
+
+model MaintenanceLog {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  equipmentId     String   @db.ObjectId
+  maintenanceDate DateTime @default(now())
+  maintenanceType String // e.g., "Routine", "Repair", "Inspection"
+  description     String
+  cost            Float?
+  technician      String?
+  parts           String?
+  status          String   @default("completed") // scheduled, in-progress, completed, cancelled
+  createdById     String?  @db.ObjectId
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  equipment Equipment @relation("EquipmentMaintenance", fields: [equipmentId], references: [id])
+  createdBy User?     @relation("MaintenanceLogCreatedBy", fields: [createdById], references: [id])
+}
+
+// Model for subscription cancellation requests
+model SubscriptionCancellationRequest {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  subscriptionId String    @db.ObjectId
+  memberId       String    @db.ObjectId
+  requestDate    DateTime  @default(now())
+  status         String    @default("pending") // pending, approved, rejected
+  reason         String?
+  adminNote      String?
+  processedById  String?   @db.ObjectId
+  processedDate  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  subscription Subscription @relation("SubscriptionCancellationRequests", fields: [subscriptionId], references: [id], onDelete: Cascade)
+  member       User         @relation("MemberCancellationRequests", fields: [memberId], references: [id])
+  processedBy  User?        @relation("ProcessedCancellationRequests", fields: [processedById], references: [id])
+}
+
+// Model for trainer appointments
+model Appointment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  memberId        String   @db.ObjectId
+  trainerId       String   @db.ObjectId
+  title           String
+  description     String?
+  appointmentDate DateTime
+  duration        Int // Duration in minutes
+  status          String   @default("pending") // pending, accepted, rejected, completed, cancelled
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  member  User @relation("MemberAppointments", fields: [memberId], references: [id])
+  trainer User @relation("TrainerAppointments", fields: [trainerId], references: [id])
 }

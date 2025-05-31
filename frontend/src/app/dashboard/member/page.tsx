@@ -112,27 +112,14 @@ export default function MemberDashboard() {
                 Xin chào, <span className="font-semibold">{auth.user?.name || 'Thành viên'}</span>!
               </p>
             </div>
-            <div className="flex space-x-3">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+            <div className="flex items-center space-x-4">
+              <button 
                 onClick={handleRefreshData}
-                className="flex items-center px-4 py-2 bg-white text-indigo-700 font-medium rounded-lg hover:bg-indigo-50 transition-all duration-200 shadow-sm"
-                title="Làm mới dữ liệu"
+                className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
               >
-                <FiRefreshCw className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} /> 
+                <FiRefreshCw className="mr-2 h-4 w-4" />
                 Làm mới dữ liệu
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={logout}
-                className="flex items-center px-4 py-2 bg-white/10 text-white font-medium rounded-lg hover:bg-white/20 transition-all duration-200 shadow-sm border border-white/30"
-                title="Đăng xuất"
-              >
-                <FiLogOut className="mr-2" /> 
-                Đăng xuất
-              </motion.button>
+              </button>
             </div>
           </div>
         </div>
@@ -142,7 +129,7 @@ export default function MemberDashboard() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div>
-            <p className="mt-4 text-lg text-gray-600">Loading your information...</p>
+            <p className="mt-4 text-lg text-gray-600">Đang tải thông tin của bạn...</p>
           </div>
         ) : (
           <div className="grid gap-8 md:grid-cols-3">
@@ -214,7 +201,7 @@ export default function MemberDashboard() {
                   
                   <motion.button 
                     whileHover={{ backgroundColor: "rgba(243, 244, 246, 1)" }}
-                    onClick={() => router.push('/membership')}
+                    onClick={handleViewSubscriptions}
                     className="w-full flex items-center justify-between px-6 py-4 text-left text-gray-700 hover:text-purple-700"
                   >
                     <div className="flex items-center">
@@ -254,8 +241,8 @@ export default function MemberDashboard() {
                             <FiCheckCircle className="h-6 w-6" />
                           </div>
                           <div>
-                            <p className="font-medium">Your membership is active</p>
-                            <p className="text-sm opacity-90">Enjoy full access to all amenities</p>
+                            <p className="font-medium">Gói tập của bạn đang hoạt động</p>
+                            <p className="text-sm opacity-90">Hãy tận hưởng tất cả tiện ích của phòng tập</p>
                           </div>
                         </div>
                       </div>
@@ -263,30 +250,30 @@ export default function MemberDashboard() {
                       <div className="grid gap-6 sm:grid-cols-2">
                         <div className="bg-gray-50 rounded-lg p-4">
                           <h3 className="text-sm font-medium text-gray-500 flex items-center">
-                            <FiCheckCircle className="mr-2 text-indigo-500" /> Membership Plan
+                            <FiCheckCircle className="mr-2 text-indigo-500" /> Gói tập
                           </h3>
                           <p className="mt-1 text-lg font-medium text-gray-900">
-                            {typeof subscription.membership === 'object' ? subscription.membership.name : 'Loading...'}
+                            {typeof subscription.membership === 'object' ? subscription.membership.name : 'Đang tải...'}
                           </p>
                         </div>
                         
                         <div className="bg-gray-50 rounded-lg p-4">
                           <h3 className="text-sm font-medium text-gray-500 flex items-center">
-                            <FiCalendar className="mr-2 text-indigo-500" /> Expiry Date
+                            <FiCalendar className="mr-2 text-indigo-500" /> Ngày hết hạn
                           </h3>
                           <p className="mt-1 text-lg font-medium text-gray-900">
                             {formatDate(subscription.endDate)}
                           </p>
                           <div className="mt-1 flex items-center">
                             <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
-                              {getDaysRemaining(subscription.endDate)} days remaining
+                              Còn {getDaysRemaining(subscription.endDate)} ngày
                             </span>
                           </div>
                         </div>
                         
                         <div className="bg-gray-50 rounded-lg p-4">
                           <h3 className="text-sm font-medium text-gray-500 flex items-center">
-                            <FiCreditCard className="mr-2 text-indigo-500" /> Payment Status
+                            <FiCreditCard className="mr-2 text-indigo-500" /> Tình trạng thanh toán
                           </h3>
                           <p className={`mt-1 flex items-center ${
                             subscription.paymentStatus === 'completed' ? 'text-green-600' : 
@@ -303,7 +290,7 @@ export default function MemberDashboard() {
                         </div>
                         <div className="bg-gray-50 rounded-lg p-4">
                           <h3 className="text-sm font-medium text-gray-500 flex items-center">
-                            <FiCalendar className="mr-2 text-indigo-500" /> Start Date
+                            <FiCalendar className="mr-2 text-indigo-500" /> Ngày bắt đầu
                           </h3>
                           <p className="mt-1 text-lg font-medium text-gray-900">
                             {formatDate(subscription.startDate)}
@@ -333,7 +320,7 @@ export default function MemberDashboard() {
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => router.push('/membership')}
+                          onClick={handleViewSubscriptions}
                           className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200"
                         >
                           Xem danh sách gói tập <FiChevronRight className="ml-1" />
@@ -378,15 +365,15 @@ export default function MemberDashboard() {
                                 </p>
                                 <p className="text-sm text-gray-500">
                                   {attendance.checkOutTime ? 
-                                    `Duration: ${attendance.duration} minutes` : 
-                                    'Check-out pending'
+                                    `Thời gian: ${attendance.duration} phút` : 
+                                    'Chờ checkout'
                                   }
                                 </p>
                               </div>
                               <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                 attendance.checkOutTime ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                               }`}>
-                                {attendance.checkOutTime ? 'Completed' : 'In Progress'}
+                                {attendance.checkOutTime ? 'Hoàn thành' : 'Đang tập'}
                               </span>
                             </div>
                           </li>

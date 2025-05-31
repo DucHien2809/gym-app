@@ -278,4 +278,108 @@ exports.changeUserRole = async (req, res) => {
       message: error.message,
     });
   }
+};
+
+// Cập nhật mật khẩu
+exports.updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.params.id;
+
+    // Kiểm tra quyền: chỉ admin có thể cập nhật mật khẩu bất kỳ người dùng nào
+    // hoặc người dùng chỉ có thể cập nhật mật khẩu của chính mình
+    if (req.user.role !== 'admin' && req.user.id !== userId) {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Bạn không có quyền thực hiện hành động này',
+      });
+    }
+
+    // Kiểm tra input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Vui lòng cung cấp mật khẩu hiện tại và mật khẩu mới',
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Mật khẩu mới phải có ít nhất 6 ký tự',
+      });
+    }
+
+    // Lấy user với password
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Không tìm thấy người dùng',
+      });
+    }
+
+    // Kiểm tra mật khẩu hiện tại
+    const isCurrentPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordCorrect) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Mật khẩu hiện tại không đúng',
+      });
+    }
+
+    // Hash mật khẩu mới
+    const hashedNewPassword = await bcrypt.hash(newPassword, 12);
+
+    // Cập nhật mật khẩu
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedNewPassword },
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Mật khẩu đã được cập nhật thành công',
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+    });
+  }
+};
+
+// Lấy tất cả huấn luyện viên (trainers)
+exports.getAllTrainers = async (req, res) => {
+  try {
+    const trainers = await prisma.user.findMany({
+      where: {
+        role: 'trainer',
+        active: true
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        profileImage: true
+      }
+    });
+
+    res.status(200).json({
+      status: 'success',
+      results: trainers.length,
+      data: {
+        trainers,
+      },
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: 'fail',
+      message: error.message,
+    });
+  }
 }; 
