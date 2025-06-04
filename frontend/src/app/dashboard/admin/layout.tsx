@@ -21,6 +21,7 @@ export default function AdminDashboardLayout({
     { name: 'Đăng ký', href: '/dashboard/admin/subscriptions', current: pathname === '/dashboard/admin/subscriptions' },
     { name: 'Điểm danh', href: '/dashboard/admin/attendance', current: pathname === '/dashboard/admin/attendance' },
     { name: 'Thiết bị', href: '/dashboard/admin/equipment', current: pathname === '/dashboard/admin/equipment' },
+    { name: 'Hồ sơ', href: '/dashboard/admin/profile', current: pathname === '/dashboard/admin/profile' },
   ];
 
   return (

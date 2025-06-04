@@ -9,7 +9,8 @@ exports.getAllAttendances = async (req, res) => {
           select: {
             id: true,
             name: true,
-            email: true
+            email: true,
+            profileImage: true
           }
         },
         createdBy: {
@@ -142,7 +143,8 @@ exports.checkIn = async (req, res) => {
           select: {
             id: true,
             name: true,
-            email: true
+            email: true,
+            profileImage: true
           }
         },
         createdBy: {
@@ -214,7 +216,8 @@ exports.checkOut = async (req, res) => {
           select: {
             id: true,
             name: true,
-            email: true
+            email: true,
+            profileImage: true
           }
         },
         createdBy: {

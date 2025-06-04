@@ -105,8 +105,18 @@ export default function MemberAttendance() {
     router.push('/dashboard/member');
   };
 
-  // Lọc điểm danh theo ngày và trạng thái
+  // Lọc điểm danh theo từ khóa tìm kiếm, ngày và trạng thái
   const filteredAttendances = attendances.filter(attendance => {
+    // Lọc theo từ khóa tìm kiếm trong ghi chú
+    if (searchTerm && attendance.notes) {
+      if (!attendance.notes.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false;
+      }
+    } else if (searchTerm && !attendance.notes) {
+      // Nếu có từ khóa tìm kiếm nhưng không có ghi chú thì loại bỏ
+      return false;
+    }
+    
     // Lọc theo trạng thái
     if (statusFilter === 'active' && attendance.checkOutTime) {
       return false;

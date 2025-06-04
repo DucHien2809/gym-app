@@ -32,6 +32,75 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Helper function to get user avatar
+  const getUserAvatar = (user: User) => {
+    if (user.profileImage) {
+      return `http://localhost:5000${user.profileImage}`;
+    }
+    return null;
+  };
+  
+  // Helper function to get user initials
+  const getUserInitials = (name: string) => {
+    return name.charAt(0).toUpperCase();
+  };
+  
+  // Avatar component
+  const UserAvatar = ({ user, size = 'sm' }: { user: User; size?: 'sm' | 'lg' }) => {
+    const [imageError, setImageError] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    
+    const sizeClasses = {
+      sm: 'h-10 w-10',
+      lg: 'h-16 w-16'
+    };
+    
+    const textSizeClasses = {
+      sm: 'font-medium',
+      lg: 'text-xl font-bold'
+    };
+    
+    const borderClasses = {
+      sm: 'border-2 border-gray-200',
+      lg: 'border-4 border-white shadow-md'
+    };
+    
+    const avatarUrl = getUserAvatar(user);
+    
+    if (!avatarUrl || imageError) {
+      return (
+        <div className={`${sizeClasses[size]} rounded-full flex items-center justify-center ${
+          size === 'lg' ? 'bg-white' : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+        }`}>
+          <span className={`${size === 'lg' ? 'text-indigo-600' : 'text-white'} ${textSizeClasses[size]}`}>
+            {getUserInitials(user.name)}
+          </span>
+        </div>
+      );
+    }
+    
+    return (
+      <div className={`${sizeClasses[size]} rounded-full relative`}>
+        {isLoading && (
+          <div className={`${sizeClasses[size]} rounded-full bg-gray-200 flex items-center justify-center absolute inset-0 z-10`}>
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-indigo-500"></div>
+          </div>
+        )}
+        <img 
+          src={avatarUrl}
+          alt={user.name}
+          className={`${sizeClasses[size]} rounded-full object-cover ${borderClasses[size]}`}
+          onLoad={() => setIsLoading(false)}
+          onLoadStart={() => setIsLoading(true)}
+          onError={() => {
+            setImageError(true);
+            setIsLoading(false);
+          }}
+        />
+      </div>
+    );
+  };
+  
   // States cho tìm kiếm và lọc
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -45,6 +114,8 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [isBrowser, setIsBrowser] = useState(false);
+  
+
 
   // Set isBrowser to true when component mounts
   useEffect(() => {
@@ -157,14 +228,43 @@ export default function UserManagement() {
   };
 
   const handleResetPassword = async (userId: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn reset mật khẩu cho người dùng này?')) {
-      try {
-        // TODO: Implement reset password API
-        alert('Chức năng đang được phát triển');
-      } catch (error) {
-        console.error('Error resetting password:', error);
-        alert('Không thể reset mật khẩu');
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    // Tạo modal confirm với input cho password mới
+    const newPassword = window.prompt(
+      `Reset mật khẩu cho ${user.name}?\n\nNhập mật khẩu mới (để trống sẽ dùng mật khẩu mặc định "123456"):`,
+      ''
+    );
+
+    // Nếu user cancel thì return
+    if (newPassword === null) return;
+
+    // Confirm reset
+    const confirmMessage = newPassword.trim() 
+      ? `Xác nhận reset mật khẩu cho ${user.name} thành: "${newPassword.trim()}"?`
+      : `Xác nhận reset mật khẩu cho ${user.name} về mật khẩu mặc định "123456"?`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      setLoading(true);
+      const response = await userAPI.resetPassword(userId, newPassword.trim() || undefined);
+      
+      if (response.status === 'success' && response.data) {
+        alert(`✅ ${response.message}\n\n📧 Thông báo cho ${user.name}:\nEmail: ${user.email}\nMật khẩu mới: ${response.data.newPassword}`);
+        
+        // Refresh danh sách users
+        await fetchUsers();
+      } else {
+        alert('❌ Không thể reset mật khẩu: ' + (response.message || 'Lỗi không xác định'));
       }
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      const errorMessage = error?.message || 'Đã xảy ra lỗi khi reset mật khẩu';
+      alert('❌ Lỗi: ' + errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -348,12 +448,8 @@ export default function UserManagement() {
                       <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10">
-                              <div className="h-10 w-10 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center">
-                                <span className="text-white font-medium">
-                                  {user.name.charAt(0).toUpperCase()}
-                                </span>
-                              </div>
+                            <div className="flex-shrink-0">
+                              <UserAvatar user={user} size="sm" />
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">{user.name}</div>
@@ -547,10 +643,8 @@ export default function UserManagement() {
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 rounded-t-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="h-16 w-16 rounded-full bg-white flex items-center justify-center mr-4">
-                    <span className="text-indigo-600 text-xl font-bold">
-                      {selectedUser.name.charAt(0).toUpperCase()}
-                    </span>
+                  <div className="mr-4">
+                    <UserAvatar user={selectedUser} size="lg" />
                   </div>
                   <h3 className="text-xl leading-6 font-bold text-white">
                     {selectedUser.name}

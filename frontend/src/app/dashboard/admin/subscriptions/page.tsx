@@ -541,7 +541,6 @@ export default function SubscriptionManagement() {
           });
           
           setSubscriptions(updatedSubscriptions);
-          localStorage.setItem('gymSubscriptions', JSON.stringify(updatedSubscriptions));
           
           alert('Xác nhận thanh toán thành công!');
         } else {
@@ -563,10 +562,8 @@ export default function SubscriptionManagement() {
           return s;
         });
         
-        setSubscriptions(updatedSubscriptions);
-        localStorage.setItem('gymSubscriptions', JSON.stringify(updatedSubscriptions));
-        
-        alert('Xác nhận thanh toán thành công! (Lưu ý: Dữ liệu chỉ được cập nhật cục bộ)');
+        // API lỗi - thông báo lỗi cho user
+        alert('Không thể xác nhận thanh toán. Vui lòng thử lại sau.');
       }
       
       // Đóng modal

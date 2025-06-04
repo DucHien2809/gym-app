@@ -8,24 +8,32 @@ import { FiSave, FiX, FiArrowLeft } from 'react-icons/fi';
 import Link from 'next/link';
 
 interface Props {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function EditEquipmentPage({ params }: Props) {
   const router = useRouter();
-  const { id } = params;
+  const { id } = React.use(params);
   
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Equipment categories
-  const categories = ['Cardio', 'Strength', 'Flexibility', 'Free Weights', 'Machines', 'Accessories'];
+  const categories = ['Cardio', 'Sức mạnh', 'Linh hoạt', 'Tạ tự do', 'Máy tập', 'Phụ kiện'];
   
   // Equipment statuses
   const statuses = ['available', 'in-use', 'maintenance', 'retired'];
+
+  // Status labels in Vietnamese
+  const statusLabels: { [key: string]: string } = {
+    'available': 'Có sẵn',
+    'in-use': 'Đang sử dụng',
+    'maintenance': 'Bảo trì',
+    'retired': 'Ngừng sử dụng'
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -100,7 +108,7 @@ export default function EditEquipmentPage({ params }: Props) {
     try {
       // Validate required fields
       if (!formData.name || !formData.description || !formData.category || !formData.purchaseDate || !formData.purchasePrice || !formData.manufacturer) {
-        throw new Error('Please fill all required fields');
+        throw new Error('Vui lòng điền tất cả các trường bắt buộc');
       }
 
       // Update equipment
@@ -112,7 +120,7 @@ export default function EditEquipmentPage({ params }: Props) {
       // Redirect to equipment details
       router.push(`/dashboard/admin/equipment/${id}`);
     } catch (err: any) {
-      setError(err.message || 'Failed to update equipment');
+      setError(err.message || 'Không thể cập nhật thiết bị');
     } finally {
       setSubmitting(false);
     }
@@ -121,7 +129,7 @@ export default function EditEquipmentPage({ params }: Props) {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">Loading equipment data...</div>
+        <div className="text-center py-12">Đang tải dữ liệu thiết bị...</div>
       </div>
     );
   }
@@ -134,15 +142,15 @@ export default function EditEquipmentPage({ params }: Props) {
             href={`/dashboard/admin/equipment/${id}`}
             className="inline-flex items-center text-indigo-600 hover:text-indigo-800 mr-4"
           >
-            <FiArrowLeft className="mr-2" /> Back
+            <FiArrowLeft className="mr-2" /> Quay lại
           </Link>
-          <h1 className="text-2xl font-bold">Edit Equipment</h1>
+          <h1 className="text-2xl font-bold">Chỉnh sửa thiết bị</h1>
         </div>
         <Link
           href={`/dashboard/admin/equipment/${id}`}
           className="bg-gray-500 text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-gray-600"
         >
-          <FiX /> Cancel
+          <FiX /> Hủy
         </Link>
       </div>
 
@@ -158,7 +166,7 @@ export default function EditEquipmentPage({ params }: Props) {
             {/* Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Name <span className="text-red-500">*</span>
+                Tên thiết bị <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -173,7 +181,7 @@ export default function EditEquipmentPage({ params }: Props) {
             {/* Category */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category <span className="text-red-500">*</span>
+                Danh mục <span className="text-red-500">*</span>
               </label>
               <select
                 name="category"
@@ -193,7 +201,7 @@ export default function EditEquipmentPage({ params }: Props) {
             {/* Status */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
+                Trạng thái
               </label>
               <select
                 name="status"
@@ -203,7 +211,7 @@ export default function EditEquipmentPage({ params }: Props) {
               >
                 {statuses.map((status) => (
                   <option key={status} value={status}>
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                    {statusLabels[status] || status}
                   </option>
                 ))}
               </select>
@@ -212,7 +220,7 @@ export default function EditEquipmentPage({ params }: Props) {
             {/* Manufacturer */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Manufacturer <span className="text-red-500">*</span>
+                Nhà sản xuất <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -241,7 +249,7 @@ export default function EditEquipmentPage({ params }: Props) {
             {/* Serial Number */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Serial Number
+                Số serial
               </label>
               <input
                 type="text"
@@ -255,7 +263,7 @@ export default function EditEquipmentPage({ params }: Props) {
             {/* Purchase Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Purchase Date <span className="text-red-500">*</span>
+                Ngày mua <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
@@ -270,7 +278,7 @@ export default function EditEquipmentPage({ params }: Props) {
             {/* Purchase Price */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Purchase Price <span className="text-red-500">*</span>
+                Giá mua <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -286,7 +294,7 @@ export default function EditEquipmentPage({ params }: Props) {
             {/* Location */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location
+                Vị trí
               </label>
               <input
                 type="text"
@@ -300,7 +308,7 @@ export default function EditEquipmentPage({ params }: Props) {
             {/* Image URL */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Image URL
+                URL hình ảnh
               </label>
               <input
                 type="text"
@@ -315,7 +323,7 @@ export default function EditEquipmentPage({ params }: Props) {
           {/* Description */}
           <div className="mt-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description <span className="text-red-500">*</span>
+              Mô tả <span className="text-red-500">*</span>
             </label>
             <textarea
               name="description"
@@ -330,7 +338,7 @@ export default function EditEquipmentPage({ params }: Props) {
           {/* Notes */}
           <div className="mt-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Notes
+              Ghi chú
             </label>
             <textarea
               name="notes"
@@ -348,7 +356,7 @@ export default function EditEquipmentPage({ params }: Props) {
               disabled={submitting}
               className="bg-indigo-600 text-white px-6 py-2 rounded-md flex items-center gap-2 hover:bg-indigo-700 disabled:bg-indigo-300"
             >
-              <FiSave /> {submitting ? 'Saving...' : 'Update Equipment'}
+              <FiSave /> {submitting ? 'Đang lưu...' : 'Cập nhật thiết bị'}
             </button>
           </div>
         </form>

@@ -142,99 +142,42 @@ export default function MembershipManagement() {
     const fetchMemberships = async () => {
       try {
         setLoading(true);
+        setError(null);
         
-        console.log('Fetching memberships from API first...');
+        console.log('Fetching memberships from API...');
+        const response = await membershipAPI.getAllMemberships();
+        console.log('API response:', response);
         
-        // Ưu tiên lấy dữ liệu từ API trước
-        try {
-          const response = await membershipAPI.getAllMemberships();
-          console.log('API response:', response);
-          
-          if (response.status === 'success' && response.data?.memberships) {
-            const membershipsData = response.data.memberships as unknown as Membership[];
-            console.log('Found memberships from API:', membershipsData.length);
-            
-            if (membershipsData.length > 0) {
-              console.log('Using data from API');
-              setMemberships(membershipsData);
-              // Cập nhật localStorage để đồng bộ
-              localStorage.setItem('gymMemberships', JSON.stringify(membershipsData));
-              setLoading(false);
-              return;
-            }
-          }
-          
-          // Nếu API không có dữ liệu, kiểm tra localStorage
-          console.log('API returned no data, checking localStorage');
-          const savedMemberships = localStorage.getItem('gymMemberships');
-          if (savedMemberships) {
-            console.log('Found memberships in localStorage');
-            const parsedMemberships = JSON.parse(savedMemberships);
-            
-            if (parsedMemberships.length > 0) {
-              console.log('Using data from localStorage');
-              setMemberships(parsedMemberships);
-              
-              // Cố gắng đồng bộ dữ liệu từ localStorage lên API
-              console.log('Trying to sync localStorage data to API');
-              for (const membership of parsedMemberships) {
-                try {
-                  // Kiểm tra nếu đã tồn tại thì cập nhật, nếu không thì tạo mới
-                  const membershipData = {
-                    name: membership.name,
-                    description: membership.description,
-                    duration: membership.duration,
-                    price: membership.price,
-                    features: membership.features
-                  };
-                  
-                  await membershipAPI.createMembership(membershipData)
-                    .catch(e => console.error('Error syncing membership to API:', e, membership));
-                } catch (syncError) {
-                  console.error('Error during sync operation:', syncError);
-                }
-              }
-              
-              setLoading(false);
-              return;
-            }
-          }
-        } catch (apiError) {
-          console.error('API error, checking localStorage:', apiError);
-          
-          // Nếu API lỗi, thử dùng localStorage
-          const savedMemberships = localStorage.getItem('gymMemberships');
-          if (savedMemberships) {
-            const parsedMemberships = JSON.parse(savedMemberships);
-            if (parsedMemberships.length > 0) {
-              console.log('Using data from localStorage due to API error');
-              setMemberships(parsedMemberships);
-              setLoading(false);
-              return;
-            }
-          }
+        if (response.status === 'success' && response.data?.memberships) {
+          const membershipsData = response.data.memberships as unknown as Membership[];
+          console.log('Found memberships from API:', membershipsData.length);
+          setMemberships(membershipsData);
+        } else {
+          // If no data from API, create default memberships in database
+          console.log('No data from API, creating default memberships in database');
+          await createDefaultMemberships();
         }
-        
-        // Nếu cả API và localStorage đều không có dữ liệu, dùng dữ liệu mẫu
-        console.log('No data in API or localStorage, using default memberships');
-        useDefaultMemberships();
-      } catch (err) {
+      } catch (apiError) {
+        console.error('API error:', apiError);
         setError('Không thể tải dữ liệu gói tập. Vui lòng thử lại sau.');
-        console.error('Error fetching memberships:', err);
         
-        // Dùng dữ liệu mẫu nếu có lỗi
-        useDefaultMemberships();
+        // Try to create default memberships if API fails completely
+        try {
+          await createDefaultMemberships();
+        } catch (createError) {
+          console.error('Failed to create default memberships:', createError);
+          setError('Không thể tải và tạo dữ liệu gói tập. Vui lòng kiểm tra kết nối mạng.');
+        }
       } finally {
         setLoading(false);
       }
     };
     
-    // Hàm tạo dữ liệu mẫu
-    const useDefaultMemberships = () => {
-      console.log('Using default membership data');
+    // Function to create default memberships in database
+    const createDefaultMemberships = async () => {
+      console.log('Creating default membership data in database');
       const defaultMemberships = [
         {
-          id: '1',
           name: 'Basic',
           description: 'Gói cơ bản dành cho người mới bắt đầu.',
           duration: 1,
@@ -247,7 +190,6 @@ export default function MembershipManagement() {
           ]
         },
         {
-          id: '2',
           name: 'Standard',
           description: 'Gói phổ biến nhất với nhiều tiện ích.',
           duration: 3,
@@ -262,7 +204,6 @@ export default function MembershipManagement() {
           ]
         },
         {
-          id: '3',
           name: 'Premium',
           description: 'Trải nghiệm cao cấp với đầy đủ tiện ích VIP.',
           duration: 12,
@@ -280,27 +221,25 @@ export default function MembershipManagement() {
         }
       ];
       
-      setMemberships(defaultMemberships);
-      localStorage.setItem('gymMemberships', JSON.stringify(defaultMemberships));
-      
-      // Cố gắng lưu dữ liệu mẫu lên API
-      console.log('Trying to save default memberships to API');
-      defaultMemberships.forEach(async (membership) => {
-        try {
-          const membershipData = {
-            name: membership.name,
-            description: membership.description,
-            duration: membership.duration,
-            price: membership.price,
-            features: membership.features
-          };
-          
-          await membershipAPI.createMembership(membershipData)
-            .catch(e => console.error('Error syncing default membership to API:', e, membership));
-        } catch (syncError) {
-          console.error('Error syncing default membership:', syncError);
-        }
-      });
+             // Create each membership in database
+       const createdMemberships: Membership[] = [];
+       for (const membership of defaultMemberships) {
+         try {
+           const response = await membershipAPI.createMembership(membership);
+           if (response.status === 'success' && response.data?.membership) {
+             createdMemberships.push(response.data.membership as unknown as Membership);
+           }
+         } catch (error) {
+           console.error('Error creating default membership:', error, membership);
+         }
+       }
+       
+       if (createdMemberships.length > 0) {
+         setMemberships(createdMemberships);
+         console.log('Successfully created default memberships in database');
+       } else {
+         throw new Error('Failed to create any default memberships');
+       }
     };
 
     fetchMemberships();
@@ -799,19 +738,14 @@ export default function MembershipManagement() {
         .catch((error) => {
           console.error('Error deleting membership:', error);
           
-          // Fallback khi API gặp lỗi - chỉ xóa khỏi localStorage
-          const updatedMemberships = memberships.filter(
-            membership => membership.id !== deletingMembershipId
-          );
-          
-          setMemberships(updatedMemberships);
-          localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
+          // API gặp lỗi
+          console.error('Error deleting membership from API:', error);
           
           // Đóng modal trước khi hiển thị thông báo
           deleteModal.close();
           setDeletingMembershipId(null);
           
-          alert('Đã xóa gói tập (chỉ cập nhật cục bộ). Hệ thống sẽ đồng bộ khi kết nối được với server.');
+          alert('Không thể xóa gói tập. Vui lòng thử lại sau.');
         })
         .finally(() => {
           setIsSubmitting(false);
@@ -939,8 +873,7 @@ export default function MembershipManagement() {
             
             setMemberships(updatedMemberships);
             
-            // Đồng thời cập nhật localStorage để cải thiện hiệu suất
-            localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
+            // Cập nhật thành công
             
             editModal.close();
             alert('Đã cập nhật gói tập thành công!');
@@ -965,9 +898,8 @@ export default function MembershipManagement() {
           return membership;
         });
         
-        // Cập nhật state và localStorage
+        // Cập nhật state
         setMemberships(updatedMemberships);
-        localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
         
         editModal.close();
         alert('Đã cập nhật gói tập thành công! (Lưu ý: Chỉ lưu cục bộ, sẽ đồng bộ với cơ sở dữ liệu khi có kết nối)');
@@ -994,8 +926,7 @@ export default function MembershipManagement() {
             
             setMemberships(updatedMemberships);
             
-            // Lưu vào localStorage để cải thiện hiệu suất
-            localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
+            // Lưu thành công vào database
             
             addModal.close();
             alert('Đã thêm gói mới thành công vào cơ sở dữ liệu!');
@@ -1005,20 +936,9 @@ export default function MembershipManagement() {
           console.error('Error creating membership in API:', apiError);
         }
         
-        // Fallback khi API gặp lỗi - lưu vào localStorage tạm thời
-        const fallbackMembership = {
-          ...newMembershipData,
-          id: Date.now().toString() // Tạo ID tạm thời
-        };
-        
-        const updatedMemberships = [...memberships, fallbackMembership];
-        setMemberships(updatedMemberships);
-        
-        // Lưu vào localStorage
-        localStorage.setItem('gymMemberships', JSON.stringify(updatedMemberships));
-        
+        // API gặp lỗi
         addModal.close();
-        alert('Đã thêm gói mới (chỉ lưu cục bộ). Hệ thống sẽ đồng bộ khi kết nối được với server.');
+        alert('Không thể thêm gói mới. Vui lòng thử lại sau.');
       }
     } catch (error) {
       console.error('Error handling membership:', error);

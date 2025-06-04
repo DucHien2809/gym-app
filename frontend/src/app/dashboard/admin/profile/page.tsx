@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { userAPI, uploadAPI } from '@/services/api';
 import { motion } from 'framer-motion';
-import { FiUser, FiMail, FiPhone, FiCalendar, FiMapPin, FiInfo, FiEdit, FiArrowLeft, FiSave, FiX, FiLock, FiCamera, FiUpload, FiCheckCircle } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiCalendar, FiMapPin, FiInfo, FiEdit, FiArrowLeft, FiSave, FiX, FiLock, FiCamera, FiUpload, FiShield } from 'react-icons/fi';
 import { ApiResponse } from '@/types';
 
 interface User {
@@ -20,7 +20,7 @@ interface User {
   createdAt: string;
 }
 
-export default function MemberProfile() {
+export default function AdminProfile() {
   const { auth, refreshUserData } = useAuth();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -52,7 +52,7 @@ export default function MemberProfile() {
       return;
     }
 
-    if (auth.user && auth.user.role !== 'member') {
+    if (auth.user && auth.user.role !== 'admin') {
       router.push(`/dashboard/${auth.user.role}`);
       return;
     }
@@ -62,7 +62,7 @@ export default function MemberProfile() {
         id: auth.user.id,
         name: auth.user.name || '',
         email: auth.user.email || '',
-        role: auth.user.role || 'member',
+        role: auth.user.role || 'admin',
         phone: auth.user.phone || '',
         address: auth.user.address || '',
         dateOfBirth: auth.user.dateOfBirth ? new Date(auth.user.dateOfBirth).toISOString().split('T')[0] : '',
@@ -138,7 +138,7 @@ export default function MemberProfile() {
   };
 
   const handleBack = () => {
-    router.push('/dashboard/member');
+    router.push('/dashboard/admin');
   };
 
   const handleStartEdit = () => {
@@ -233,8 +233,7 @@ export default function MemberProfile() {
     try {
       const response = await uploadAPI.uploadProfileImage(imageFile);
       if (response.status === 'success' && response.data) {
-        // response.data is an object with url property
-        return (response.data as any).url;
+        return response.data.url;
       }
       throw new Error('Không thể tải lên hình ảnh');
     } catch (err: any) {
@@ -358,7 +357,7 @@ export default function MemberProfile() {
   if (!userData) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
       </div>
     );
   }
@@ -366,7 +365,7 @@ export default function MemberProfile() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg">
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-700 shadow-lg">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -374,12 +373,12 @@ export default function MemberProfile() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleBack}
-                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-700 bg-opacity-30 rounded-lg hover:bg-opacity-50 focus:outline-none transition-all duration-200"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-purple-700 bg-opacity-30 rounded-lg hover:bg-opacity-50 focus:outline-none transition-all duration-200"
               >
                 <FiArrowLeft className="w-5 h-5 mr-2" />
                 Về bảng điều khiển
               </motion.button>
-              <h1 className="text-2xl font-bold text-white">Hồ sơ của tôi</h1>
+              <h1 className="text-2xl font-bold text-white">Hồ sơ quản trị viên</h1>
             </div>
             
             {!isEditing && (
@@ -387,7 +386,7 @@ export default function MemberProfile() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleStartEdit}
-                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-700 bg-opacity-30 rounded-lg hover:bg-opacity-50 focus:outline-none transition-all duration-200"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-purple-700 bg-opacity-30 rounded-lg hover:bg-opacity-50 focus:outline-none transition-all duration-200"
               >
                 <FiEdit className="w-5 h-5 mr-2" />
                 Chỉnh sửa hồ sơ
@@ -428,7 +427,7 @@ export default function MemberProfile() {
             className="lg:col-span-1"
           >
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-8">
+              <div className="bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-8">
                 <div className="flex justify-center">
                   <div className="relative">
                     {/* Avatar or profile image */}
@@ -439,14 +438,14 @@ export default function MemberProfile() {
                         className="h-28 w-28 rounded-full object-cover border-4 border-white shadow-md"
                       />
                     ) : (
-                      <div className="h-28 w-28 rounded-full bg-white flex items-center justify-center text-indigo-600 text-3xl font-bold shadow-md border-4 border-white">
+                      <div className="h-28 w-28 rounded-full bg-white flex items-center justify-center text-purple-600 text-3xl font-bold shadow-md border-4 border-white">
                         {getInitials(userData.name)}
                       </div>
                     )}
                     
                     {/* Camera icon for editing */}
                     {isEditing && (
-                      <label htmlFor="profile-image" className="absolute bottom-0 right-0 bg-indigo-600 text-white rounded-full p-2 cursor-pointer hover:bg-indigo-700 transition-colors shadow-lg">
+                      <label htmlFor="profile-image" className="absolute bottom-0 right-0 bg-purple-600 text-white rounded-full p-2 cursor-pointer hover:bg-purple-700 transition-colors shadow-lg">
                         <FiCamera className="h-4 w-4" />
                         <input
                           id="profile-image"
@@ -483,13 +482,16 @@ export default function MemberProfile() {
                 <h2 className="text-xl font-semibold text-gray-800">{userData.name}</h2>
                 <p className="text-gray-500">{userData.email}</p>
                 
-                <div className="mt-6 px-4 py-2 bg-blue-50 rounded-lg inline-block">
-                  <span className="text-blue-700 font-medium capitalize">{userData.role}</span>
+                <div className="mt-6 px-4 py-2 bg-purple-50 rounded-lg inline-block">
+                  <span className="text-purple-700 font-medium flex items-center">
+                    <FiShield className="mr-2 h-4 w-4" />
+                    Quản trị viên
+                  </span>
                 </div>
                 
                 <div className="mt-6 pt-6 border-t border-gray-100">
                   <p className="text-gray-500 text-sm">
-                    Thành viên từ {formatDate(userData.createdAt)}
+                    Tham gia từ {formatDate(userData.createdAt)}
                   </p>
                 </div>
               </div>
@@ -524,7 +526,7 @@ export default function MemberProfile() {
                           name="name"
                           value={formData.name}
                           onChange={handleInputChange}
-                          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 ${
+                          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900 ${
                             formErrors.name ? 'border-red-500' : ''
                           }`}
                         />
@@ -543,7 +545,7 @@ export default function MemberProfile() {
                           name="email"
                           value={formData.email}
                           onChange={handleInputChange}
-                          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 ${
+                          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900 ${
                             formErrors.email ? 'border-red-500' : ''
                           }`}
                         />
@@ -562,7 +564,7 @@ export default function MemberProfile() {
                           name="phone"
                           value={formData.phone}
                           onChange={handleInputChange}
-                          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 ${
+                          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900 ${
                             formErrors.phone ? 'border-red-500' : ''
                           }`}
                           placeholder="Số điện thoại của bạn"
@@ -582,7 +584,7 @@ export default function MemberProfile() {
                           rows={3}
                           value={formData.address}
                           onChange={handleInputChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900"
                           placeholder="Địa chỉ của bạn"
                         />
                       </div>
@@ -597,194 +599,86 @@ export default function MemberProfile() {
                           name="dateOfBirth"
                           value={formData.dateOfBirth}
                           onChange={handleInputChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900"
                         />
                       </div>
                       
                       {/* Password change section */}
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="pt-6 border-t border-gray-100"
-                      >
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center">
-                              <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg mr-3">
-                                <FiLock className="w-5 h-5 text-blue-600" />
-                              </div>
-                              <div>
-                                <h3 className="text-lg font-semibold text-gray-800">Bảo mật tài khoản</h3>
-                                <p className="text-sm text-gray-600">Đổi mật khẩu để bảo vệ tài khoản của bạn</p>
-                              </div>
-                            </div>
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              type="button"
-                              onClick={handleTogglePasswordChange}
-                              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
-                                isChangingPassword 
-                                  ? 'bg-red-100 text-red-700 hover:bg-red-200' 
-                                  : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'
-                              }`}
-                            >
-                              {isChangingPassword ? 'Hủy đổi mật khẩu' : 'Đổi mật khẩu'}
-                            </motion.button>
-                          </div>
-                          
-                          {isChangingPassword && (
-                            <motion.div 
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.3 }}
-                              className="mt-6 space-y-5"
-                            >
-                              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                                <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                                  <FiLock className="mr-2 text-gray-400" /> Mật khẩu hiện tại
-                                </label>
-                                <input
-                                  type="password"
-                                  id="currentPassword"
-                                  name="currentPassword"
-                                  value={formData.currentPassword}
-                                  onChange={handleInputChange}
-                                  placeholder="Nhập mật khẩu hiện tại của bạn"
-                                  className={`block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 placeholder-gray-400 transition-colors duration-200 ${
-                                    formErrors.currentPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
-                                  }`}
-                                />
-                                {formErrors.currentPassword && (
-                                  <motion.p 
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="mt-2 text-sm text-red-600 flex items-center"
-                                  >
-                                    <FiInfo className="mr-1 w-4 h-4" />
-                                    {formErrors.currentPassword}
-                                  </motion.p>
-                                )}
-                              </div>
-                              
-                              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                                  <FiLock className="mr-2 text-gray-400" /> Mật khẩu mới
-                                </label>
-                                <input
-                                  type="password"
-                                  id="newPassword"
-                                  name="newPassword"
-                                  value={formData.newPassword}
-                                  onChange={handleInputChange}
-                                  placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                                  className={`block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 placeholder-gray-400 transition-colors duration-200 ${
-                                    formErrors.newPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
-                                  }`}
-                                />
-                                
-                                {/* Password strength indicator */}
-                                {formData.newPassword && (
-                                  <div className="mt-3">
-                                    <div className="flex justify-between text-xs mb-1">
-                                      <span className="text-gray-500">Độ mạnh mật khẩu:</span>
-                                      <span className={`font-medium ${
-                                        formData.newPassword.length >= 8 ? 'text-green-600' : 
-                                        formData.newPassword.length >= 6 ? 'text-yellow-600' : 'text-red-600'
-                                      }`}>
-                                        {formData.newPassword.length >= 8 ? 'Mạnh' : 
-                                         formData.newPassword.length >= 6 ? 'Trung bình' : 'Yếu'}
-                                      </span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                      <div 
-                                        className={`h-2 rounded-full transition-all duration-300 ${
-                                          formData.newPassword.length >= 8 ? 'bg-green-500 w-full' :
-                                          formData.newPassword.length >= 6 ? 'bg-yellow-500 w-2/3' : 'bg-red-500 w-1/3'
-                                        }`}
-                                      ></div>
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {formErrors.newPassword && (
-                                  <motion.p 
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="mt-2 text-sm text-red-600 flex items-center"
-                                  >
-                                    <FiInfo className="mr-1 w-4 h-4" />
-                                    {formErrors.newPassword}
-                                  </motion.p>
-                                )}
-                              </div>
-                              
-                              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                                  <FiLock className="mr-2 text-gray-400" /> Xác nhận mật khẩu mới
-                                </label>
-                                <input
-                                  type="password"
-                                  id="confirmPassword"
-                                  name="confirmPassword"
-                                  value={formData.confirmPassword}
-                                  onChange={handleInputChange}
-                                  placeholder="Nhập lại mật khẩu mới"
-                                  className={`block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 placeholder-gray-400 transition-colors duration-200 ${
-                                    formErrors.confirmPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
-                                  }`}
-                                />
-                                
-                                {/* Password match indicator */}
-                                {formData.confirmPassword && formData.newPassword && (
-                                  <div className="mt-2 flex items-center text-sm">
-                                    {formData.newPassword === formData.confirmPassword ? (
-                                      <div className="flex items-center text-green-600">
-                                        <FiCheckCircle className="mr-1 w-4 h-4" />
-                                        Mật khẩu khớp
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center text-red-600">
-                                        <FiX className="mr-1 w-4 h-4" />
-                                        Mật khẩu không khớp
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                
-                                {formErrors.confirmPassword && (
-                                  <motion.p 
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="mt-2 text-sm text-red-600 flex items-center"
-                                  >
-                                    <FiInfo className="mr-1 w-4 h-4" />
-                                    {formErrors.confirmPassword}
-                                  </motion.p>
-                                )}
-                              </div>
-                              
-                              {/* Security tips */}
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <div className="flex items-start">
-                                  <FiInfo className="mr-2 w-5 h-5 text-blue-600 mt-0.5" />
-                                  <div>
-                                    <h4 className="text-sm font-medium text-blue-800 mb-1">Lời khuyên bảo mật:</h4>
-                                    <ul className="text-xs text-blue-700 space-y-1">
-                                      <li>• Sử dụng ít nhất 8 ký tự</li>
-                                      <li>• Kết hợp chữ hoa, chữ thường, số và ký tự đặc biệt</li>
-                                      <li>• Không sử dụng thông tin cá nhân dễ đoán</li>
-                                      <li>• Không chia sẻ mật khẩu với người khác</li>
-                                    </ul>
-                                  </div>
-                                </div>
-                              </div>
-                            </motion.div>
-                          )}
+                      <div className="pt-6 border-t border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-medium text-gray-800 flex items-center">
+                            <FiLock className="mr-2 text-gray-400" /> Đổi mật khẩu
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={handleTogglePasswordChange}
+                            className="text-purple-600 hover:text-purple-800 font-medium text-sm"
+                          >
+                            {isChangingPassword ? 'Hủy đổi mật khẩu' : 'Đổi mật khẩu'}
+                          </button>
                         </div>
-                      </motion.div>
+                        
+                        {isChangingPassword && (
+                          <div className="mt-4 space-y-4">
+                            <div>
+                              <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
+                                Mật khẩu hiện tại
+                              </label>
+                              <input
+                                type="password"
+                                id="currentPassword"
+                                name="currentPassword"
+                                value={formData.currentPassword}
+                                onChange={handleInputChange}
+                                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900 ${
+                                  formErrors.currentPassword ? 'border-red-500' : ''
+                                }`}
+                              />
+                              {formErrors.currentPassword && (
+                                <p className="mt-1 text-sm text-red-600">{formErrors.currentPassword}</p>
+                              )}
+                            </div>
+                            
+                            <div>
+                              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
+                                Mật khẩu mới
+                              </label>
+                              <input
+                                type="password"
+                                id="newPassword"
+                                name="newPassword"
+                                value={formData.newPassword}
+                                onChange={handleInputChange}
+                                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900 ${
+                                  formErrors.newPassword ? 'border-red-500' : ''
+                                }`}
+                              />
+                              {formErrors.newPassword && (
+                                <p className="mt-1 text-sm text-red-600">{formErrors.newPassword}</p>
+                              )}
+                            </div>
+                            
+                            <div>
+                              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                                Xác nhận mật khẩu mới
+                              </label>
+                              <input
+                                type="password"
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                value={formData.confirmPassword}
+                                onChange={handleInputChange}
+                                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-gray-900 ${
+                                  formErrors.confirmPassword ? 'border-red-500' : ''
+                                }`}
+                              />
+                              {formErrors.confirmPassword && (
+                                <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                       
                       {error && (
                         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
@@ -808,7 +702,7 @@ export default function MemberProfile() {
                           whileTap={{ scale: 0.95 }}
                           type="submit"
                           disabled={loading}
-                          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
+                          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 focus:outline-none"
                         >
                           {loading ? (
                             <>
@@ -832,28 +726,28 @@ export default function MemberProfile() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-sm text-gray-500 flex items-center mb-1">
-                          <FiUser className="mr-2 text-indigo-500" /> Tên
+                          <FiUser className="mr-2 text-purple-500" /> Tên
                         </p>
                         <p className="text-gray-800 font-medium">{userData.name || 'Chưa cung cấp'}</p>
                       </div>
                       
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-sm text-gray-500 flex items-center mb-1">
-                          <FiMail className="mr-2 text-indigo-500" /> Email
+                          <FiMail className="mr-2 text-purple-500" /> Email
                         </p>
                         <p className="text-gray-800 font-medium">{userData.email || 'Chưa cung cấp'}</p>
                       </div>
                       
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-sm text-gray-500 flex items-center mb-1">
-                          <FiPhone className="mr-2 text-indigo-500" /> Điện thoại
+                          <FiPhone className="mr-2 text-purple-500" /> Điện thoại
                         </p>
                         <p className="text-gray-800 font-medium">{userData.phone || 'Chưa cung cấp'}</p>
                       </div>
                       
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <p className="text-sm text-gray-500 flex items-center mb-1">
-                          <FiCalendar className="mr-2 text-indigo-500" /> Ngày sinh
+                          <FiCalendar className="mr-2 text-purple-500" /> Ngày sinh
                         </p>
                         <p className="text-gray-800 font-medium">
                           {userData.dateOfBirth ? formatDate(userData.dateOfBirth) : 'Chưa cung cấp'}
@@ -863,9 +757,9 @@ export default function MemberProfile() {
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm text-gray-500 flex items-center mb-1">
-                                                  <FiMapPin className="mr-2 text-indigo-500" /> Địa chỉ
+                        <FiMapPin className="mr-2 text-purple-500" /> Địa chỉ
                       </p>
-                                              <p className="text-gray-800 font-medium">{userData.address || 'Chưa cung cấp'}</p>
+                      <p className="text-gray-800 font-medium">{userData.address || 'Chưa cung cấp'}</p>
                     </div>
                   </div>
                 )}

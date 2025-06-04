@@ -250,7 +250,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="ml-5 w-0 flex-1">
                       <dl>
-                        <dt className="truncate text-sm font-medium text-gray-500">Tổng Số Nhân Viên</dt>
+                        <dt className="truncate text-sm font-medium text-gray-500">Tổng Số HLV</dt>
                         <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">{stats.totalStaff}</dd>
                       </dl>
                     </div>
@@ -258,7 +258,7 @@ export default function AdminDashboard() {
                   <div className="mt-4">
                     <div className="flex items-center text-sm text-gray-600">
                       <FiBarChart2 className="h-4 w-4 mr-1" />
-                      <span className="font-medium">Huấn luyện viên & nhân viên</span>
+                      <span className="font-medium">Huấn luyện viên khác nhau</span>
                     </div>
                   </div>
                 </div>

@@ -6,6 +6,108 @@ import { useAuth } from '@/context/AuthContext';
 import { attendanceAPI, userAPI } from '@/services/api';
 import { FiSearch, FiFilter, FiEdit, FiTrash2, FiArrowLeft, FiCheck, FiX, FiClock, FiUser, FiCalendar, FiActivity } from 'react-icons/fi';
 
+// UserAvatar component to display real profile images with fallback
+interface UserAvatarProps {
+  user: {
+    id: string;
+    name: string;
+    profileImage?: string;
+  };
+  size: 'sm' | 'lg';
+}
+
+const UserAvatar: React.FC<UserAvatarProps> = ({ user, size }) => {
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  
+  const sizeClasses = {
+    sm: 'h-10 w-10',
+    lg: 'h-16 w-16'
+  };
+  
+  const borderClasses = {
+    sm: 'border border-gray-200',
+    lg: 'border-2 border-white shadow-lg'
+  };
+  
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase())
+      .slice(0, 2)
+      .join('');
+  };
+  
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      '#EF4444', '#F97316', '#F59E0B', '#EAB308',
+      '#84CC16', '#22C55E', '#10B981', '#14B8A6',
+      '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1',
+      '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+  
+  const handleImageLoad = () => {
+    setImageLoading(false);
+    setImageError(false);
+  };
+  
+  const handleImageError = () => {
+    setImageLoading(false);
+    setImageError(true);
+  };
+  
+  const handleImageStart = () => {
+    setImageLoading(true);
+    setImageError(false);
+  };
+  
+  // If user has profileImage and no error, show real image
+  if (user.profileImage && !imageError) {
+    const imageUrl = user.profileImage.startsWith('http') 
+      ? user.profileImage 
+      : `http://localhost:5000${user.profileImage}`;
+    
+    return (
+      <div className={`${sizeClasses[size]} flex-shrink-0 relative`}>
+        {imageLoading && (
+          <div className={`${sizeClasses[size]} rounded-full ${borderClasses[size]} bg-gray-100 flex items-center justify-center absolute inset-0 z-10`}>
+            <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full"></div>
+          </div>
+        )}
+        <img
+          className={`${sizeClasses[size]} rounded-full object-cover ${borderClasses[size]}`}
+          src={imageUrl}
+          alt={user.name}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+          onLoadStart={handleImageStart}
+        />
+      </div>
+    );
+  }
+  
+  // Fallback to initials
+  const initials = getInitials(user.name);
+  const bgColor = getAvatarColor(user.name);
+  
+  return (
+    <div 
+      className={`${sizeClasses[size]} rounded-full ${borderClasses[size]} flex items-center justify-center flex-shrink-0`}
+      style={{ backgroundColor: bgColor }}
+    >
+      <span className="text-white font-semibold text-sm">
+        {initials}
+      </span>
+    </div>
+  );
+};
+
 interface Attendance {
   id: string;
   memberId: string;
@@ -19,6 +121,7 @@ interface Attendance {
     email: string;
     phone?: string;
     avatar?: string;
+    profileImage?: string;
   };
 }
 
@@ -29,6 +132,7 @@ interface Member {
   phone?: string;
   role: string;
   active: boolean;
+  profileImage?: string;
 }
 
 interface User {
@@ -41,7 +145,7 @@ interface User {
 }
 
 export default function AttendanceManagement() {
-  const { auth } = useAuth();
+  const { auth, loading: authLoading } = useAuth();
   const router = useRouter();
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,6 +238,11 @@ export default function AttendanceManagement() {
   };
 
   useEffect(() => {
+    // Chờ AuthContext load xong trước khi kiểm tra authentication
+    if (authLoading) {
+      return;
+    }
+
     // Kiểm tra xác thực
     if (!auth.isAuthenticated) {
       router.push('/auth/login');
@@ -148,7 +257,7 @@ export default function AttendanceManagement() {
 
     fetchAttendances();
     fetchMembers();
-  }, [auth.isAuthenticated, auth.user, router]);
+  }, [authLoading, auth.isAuthenticated, auth.user, router]);
 
   const handleBack = () => {
     router.push('/dashboard/admin');
@@ -506,6 +615,18 @@ export default function AttendanceManagement() {
     return diffMins;
   };
 
+  // Show loading state while AuthContext is loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div>
+          <p className="mt-4 text-lg text-gray-600">Đang xác thực...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -634,7 +755,7 @@ export default function AttendanceManagement() {
                   className="text-indigo-600 hover:text-indigo-800"
                 >
                   <span className="flex items-center">
-                    <FiActivity className="mr-1" /> Làm mới danh sách
+                    <FiActivity className="mr-1" />
                   </span>
                 </button>
               </div>
@@ -676,6 +797,7 @@ export default function AttendanceManagement() {
                             <tr key={member.id} className="hover:bg-gray-50">
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center">
+                                  <UserAvatar user={member} size="sm" />
                                   <div className="ml-4">
                                     <div className="text-sm font-medium text-gray-900">{member.name}</div>
                                     <div className="text-sm text-gray-500">{member.email}</div>
@@ -762,13 +884,7 @@ export default function AttendanceManagement() {
                         <tr key={attendance.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4">
                             <div className="flex items-center">
-                              <div className="h-10 w-10 flex-shrink-0">
-                                <img 
-                                  className="h-10 w-10 rounded-full object-cover" 
-                                  src={attendance.member.avatar || 'https://via.placeholder.com/40'} 
-                                  alt={attendance.member.name} 
-                                />
-                              </div>
+                              <UserAvatar user={attendance.member} size="sm" />
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">{attendance.member.name}</div>
                                 <div className="text-sm text-gray-500">{attendance.member.email}</div>

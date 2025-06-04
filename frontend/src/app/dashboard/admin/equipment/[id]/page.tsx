@@ -8,14 +8,14 @@ import { FiEdit, FiArrowLeft, FiPlus, FiCalendar, FiTool, FiDollarSign, FiUser, 
 import Link from 'next/link';
 
 interface Props {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function EquipmentDetailsPage({ params }: Props) {
   const router = useRouter();
-  const { id } = params;
+  const { id } = React.use(params);
   
   const [equipment, setEquipment] = useState<Equipment | null>(null);
   const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
@@ -47,7 +47,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
         }
         setError(null);
       } catch (err: any) {
-        setError(err.message || 'Failed to fetch equipment details');
+        setError(err.message || 'Không thể tải thông tin thiết bị');
       } finally {
         setLoading(false);
       }
@@ -82,7 +82,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
     try {
       // Validate form
       if (!maintenanceFormData.maintenanceType || !maintenanceFormData.description) {
-        throw new Error('Please fill all required fields');
+        throw new Error('Vui lòng điền tất cả các trường bắt buộc');
       }
 
       // Submit form
@@ -112,7 +112,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
       });
       setShowAddMaintenanceModal(false);
     } catch (err: any) {
-      setError(err.message || 'Failed to add maintenance log');
+      setError(err.message || 'Không thể thêm nhật ký bảo trì');
     } finally {
       setSubmitting(false);
     }
@@ -153,7 +153,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">Loading equipment details...</div>
+        <div className="text-center py-12">Đang tải thông tin thiết bị...</div>
       </div>
     );
   }
@@ -168,7 +168,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
           href="/dashboard/admin/equipment"
           className="inline-flex items-center text-indigo-600 hover:text-indigo-800"
         >
-          <FiArrowLeft className="mr-2" /> Back to Equipment List
+          <FiArrowLeft className="mr-2" /> Quay lại danh sách thiết bị
         </Link>
       </div>
     );
@@ -177,12 +177,12 @@ export default function EquipmentDetailsPage({ params }: Props) {
   if (!equipment) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">Equipment not found</div>
+        <div className="text-center py-12">Không tìm thấy thiết bị</div>
         <Link
           href="/dashboard/admin/equipment"
           className="inline-flex items-center text-indigo-600 hover:text-indigo-800"
         >
-          <FiArrowLeft className="mr-2" /> Back to Equipment List
+          <FiArrowLeft className="mr-2" /> Quay lại danh sách thiết bị
         </Link>
       </div>
     );
@@ -197,7 +197,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
             href="/dashboard/admin/equipment"
             className="inline-flex items-center text-indigo-600 hover:text-indigo-800 mr-4"
           >
-            <FiArrowLeft className="mr-2" /> Back
+            <FiArrowLeft className="mr-2" /> Quay lại
           </Link>
           <h1 className="text-2xl font-bold">{equipment.name}</h1>
         </div>
@@ -206,13 +206,13 @@ export default function EquipmentDetailsPage({ params }: Props) {
             onClick={() => setShowAddMaintenanceModal(true)}
             className="bg-green-600 text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-green-700"
           >
-            <FiTool /> Log Maintenance
+            <FiTool /> Ghi nhật ký bảo trì
           </button>
           <Link
             href={`/dashboard/admin/equipment/edit/${equipment.id}`}
             className="bg-indigo-600 text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-indigo-700"
           >
-            <FiEdit /> Edit Equipment
+            <FiEdit /> Chỉnh sửa thiết bị
           </Link>
         </div>
       </div>
@@ -222,16 +222,16 @@ export default function EquipmentDetailsPage({ params }: Props) {
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h2 className="text-xl font-semibold mb-4">Equipment Information</h2>
+              <h2 className="text-xl font-semibold mb-4">Thông tin thiết bị</h2>
               <div className="space-y-3">
                 <div>
-                  <span className="text-gray-500 text-sm">Category:</span>
+                  <span className="text-gray-500 text-sm">Danh mục:</span>
                   <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
                     {equipment.category}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-500 text-sm">Status:</span>
+                  <span className="text-gray-500 text-sm">Trạng thái:</span>
                   <span
                     className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(
                       equipment.status
@@ -241,7 +241,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-500 text-sm">Manufacturer:</span>
+                  <span className="text-gray-500 text-sm">Nhà sản xuất:</span>
                   <span className="ml-2">{equipment.manufacturer}</span>
                 </div>
                 {equipment.model && (
@@ -252,13 +252,13 @@ export default function EquipmentDetailsPage({ params }: Props) {
                 )}
                 {equipment.serialNumber && (
                   <div>
-                    <span className="text-gray-500 text-sm">Serial Number:</span>
+                    <span className="text-gray-500 text-sm">Số serial:</span>
                     <span className="ml-2">{equipment.serialNumber}</span>
                   </div>
                 )}
                 {equipment.location && (
                   <div>
-                    <span className="text-gray-500 text-sm">Location:</span>
+                    <span className="text-gray-500 text-sm">Vị trí:</span>
                     <span className="ml-2">{equipment.location}</span>
                   </div>
                 )}
@@ -266,25 +266,25 @@ export default function EquipmentDetailsPage({ params }: Props) {
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold mb-4">Maintenance Information</h2>
+              <h2 className="text-xl font-semibold mb-4">Thông tin bảo trì</h2>
               <div className="space-y-3">
                 <div>
-                  <span className="text-gray-500 text-sm">Purchase Date:</span>
+                  <span className="text-gray-500 text-sm">Ngày mua:</span>
                   <span className="ml-2">{formatDate(equipment.purchaseDate)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 text-sm">Purchase Price:</span>
+                  <span className="text-gray-500 text-sm">Giá mua:</span>
                   <span className="ml-2">${equipment.purchasePrice.toFixed(2)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 text-sm">Last Maintenance:</span>
+                  <span className="text-gray-500 text-sm">Bảo trì gần nhất:</span>
                   <span className="ml-2">
-                    {equipment.lastMaintenance ? formatDate(equipment.lastMaintenance) : 'Never'}
+                    {equipment.lastMaintenance ? formatDate(equipment.lastMaintenance) : 'Chưa bao giờ'}
                   </span>
                 </div>
                 {equipment.nextMaintenance && (
                   <div>
-                    <span className="text-gray-500 text-sm">Next Scheduled Maintenance:</span>
+                    <span className="text-gray-500 text-sm">Bảo trì tiếp theo:</span>
                     <span className="ml-2">{formatDate(equipment.nextMaintenance)}</span>
                   </div>
                 )}
@@ -293,13 +293,13 @@ export default function EquipmentDetailsPage({ params }: Props) {
           </div>
 
           <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-2">Description</h2>
+            <h2 className="text-xl font-semibold mb-2">Mô tả</h2>
             <p className="text-gray-700">{equipment.description}</p>
           </div>
 
           {equipment.notes && (
             <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">Notes</h2>
+              <h2 className="text-xl font-semibold mb-2">Ghi chú</h2>
               <p className="text-gray-700">{equipment.notes}</p>
             </div>
           )}
@@ -309,12 +309,12 @@ export default function EquipmentDetailsPage({ params }: Props) {
       {/* Maintenance Logs */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold">Maintenance History</h2>
+          <h2 className="text-xl font-semibold">Lịch sử bảo trì</h2>
         </div>
 
         {maintenanceLogs.length === 0 ? (
           <div className="p-6 text-center text-gray-500">
-            No maintenance logs recorded for this equipment.
+            Chưa có nhật ký bảo trì nào được ghi nhận cho thiết bị này.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -322,19 +322,19 @@ export default function EquipmentDetailsPage({ params }: Props) {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
+                    Ngày
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
+                    Loại
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Description
+                    Mô tả
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Cost
+                    Chi phí
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    Trạng thái
                   </th>
                 </tr>
               </thead>
@@ -375,7 +375,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Add Maintenance Log</h3>
+              <h3 className="text-lg font-semibold">Thêm nhật ký bảo trì</h3>
               <button
                 onClick={() => setShowAddMaintenanceModal(false)}
                 className="text-gray-500 hover:text-gray-700"
@@ -389,7 +389,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
                   {/* Maintenance Date */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Date <span className="text-red-500">*</span>
+                      Ngày <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <input
@@ -407,7 +407,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
                   {/* Maintenance Type */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Type <span className="text-red-500">*</span>
+                      Loại <span className="text-red-500">*</span>
                     </label>
                     <select
                       name="maintenanceType"
@@ -416,18 +416,18 @@ export default function EquipmentDetailsPage({ params }: Props) {
                       className="w-full px-4 py-2 border rounded-md text-gray-900"
                       required
                     >
-                      <option value="Routine">Routine</option>
-                      <option value="Repair">Repair</option>
-                      <option value="Inspection">Inspection</option>
-                      <option value="Cleaning">Cleaning</option>
-                      <option value="Upgrade">Upgrade</option>
+                      <option value="Routine">Bảo trì định kỳ</option>
+                      <option value="Repair">Sửa chữa</option>
+                      <option value="Inspection">Kiểm tra</option>
+                      <option value="Cleaning">Vệ sinh</option>
+                      <option value="Upgrade">Nâng cấp</option>
                     </select>
                   </div>
 
                   {/* Status */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Status
+                      Trạng thái
                     </label>
                     <select
                       name="status"
@@ -435,17 +435,17 @@ export default function EquipmentDetailsPage({ params }: Props) {
                       onChange={handleMaintenanceChange}
                       className="w-full px-4 py-2 border rounded-md text-gray-900"
                     >
-                      <option value="completed">Completed</option>
-                      <option value="in-progress">In Progress</option>
-                      <option value="scheduled">Scheduled</option>
-                      <option value="cancelled">Cancelled</option>
+                      <option value="completed">Hoàn thành</option>
+                      <option value="in-progress">Đang tiến hành</option>
+                      <option value="scheduled">Đã lên lịch</option>
+                      <option value="cancelled">Đã hủy</option>
                     </select>
                   </div>
 
                   {/* Cost */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Cost
+                      Chi phí
                     </label>
                     <div className="relative">
                       <input
@@ -454,7 +454,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
                         name="cost"
                         value={maintenanceFormData.cost}
                         onChange={handleMaintenanceChange}
-                        className="w-full px-4 py-2 border rounded-md text-gray-900"
+                        className="w-full pl-10 pr-4 py-2 border rounded-md text-gray-900"
                         placeholder="0.00"
                       />
                       <FiDollarSign className="absolute left-3 top-2.5 text-gray-400" />
@@ -464,7 +464,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
                   {/* Technician */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Technician
+                      Kỹ thuật viên
                     </label>
                     <div className="relative">
                       <input
@@ -472,7 +472,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
                         name="technician"
                         value={maintenanceFormData.technician}
                         onChange={handleMaintenanceChange}
-                        className="w-full px-4 py-2 border rounded-md text-gray-900"
+                        className="w-full pl-10 pr-4 py-2 border rounded-md text-gray-900"
                       />
                       <FiUser className="absolute left-3 top-2.5 text-gray-400" />
                     </div>
@@ -481,7 +481,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
                   {/* Parts */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Parts
+                      Linh kiện
                     </label>
                     <input
                       type="text"
@@ -496,7 +496,7 @@ export default function EquipmentDetailsPage({ params }: Props) {
                 {/* Description */}
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description <span className="text-red-500">*</span>
+                    Mô tả <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     name="description"
@@ -516,14 +516,14 @@ export default function EquipmentDetailsPage({ params }: Props) {
                   onClick={() => setShowAddMaintenanceModal(false)}
                   className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md mr-2 hover:bg-gray-200"
                 >
-                  Cancel
+                  Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="bg-green-600 text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-green-700 disabled:bg-green-300"
                 >
-                  {submitting ? 'Saving...' : 'Save Maintenance Log'}
+                  {submitting ? 'Đang lưu...' : 'Lưu nhật ký bảo trì'}
                 </button>
               </div>
             </form>

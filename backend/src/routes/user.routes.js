@@ -27,4 +27,7 @@ router.patch('/:id/role', authMiddleware.restrictTo('admin'), userController.cha
 // Route để thay đổi mật khẩu
 router.patch('/:id/password', userController.updatePassword);
 
+// Route để reset mật khẩu (chỉ admin)
+router.post('/:id/reset-password', authMiddleware.restrictTo('admin'), userController.resetUserPassword);
+
 module.exports = router;

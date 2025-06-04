@@ -217,7 +217,7 @@ export default function MemberSubscriptions() {
         ];
         
         setSubscriptions(sampleSubscriptions);
-        localStorage.setItem('memberSubscriptions', JSON.stringify(sampleSubscriptions));
+        // Data loaded from database only
       } catch (err) {
         console.error('Error fetching subscriptions:', err);
         setError('Không thể tải dữ liệu đăng ký. Vui lòng thử lại sau.');
@@ -290,56 +290,16 @@ export default function MemberSubscriptions() {
         setAvailableMemberships(uniqueMemberships);
         setMembershipDataSource('api');
       } else {
-        // Nếu API không có dữ liệu, kiểm tra localStorage
-        console.log('API returned no memberships, checking localStorage');
-        const savedMemberships = localStorage.getItem('gymMemberships');
-        if (savedMemberships) {
-          const membershipsData = JSON.parse(savedMemberships);
-          if (Array.isArray(membershipsData) && membershipsData.length > 0) {
-            console.log('Using membership data from localStorage');
-            setAvailableMemberships(membershipsData);
-            setMembershipDataSource('localStorage');
-          } else {
-            // Fallback to mock data if both API and localStorage fail
-            useMockMembershipData();
-          }
-        } else {
-          // Fallback to mock data if both API and localStorage fail
-          useMockMembershipData();
-        }
+        // Nếu API không có dữ liệu, sử dụng mock data
+        console.log('API returned no memberships, using mock data');
+        useMockMembershipData();
       }
     } catch (error) {
       console.error('Error fetching available memberships:', error);
       setMembershipError('Không thể tải danh sách gói tập từ cơ sở dữ liệu. Vui lòng thử lại sau.');
       
-      // Nếu API gặp lỗi, thử dùng localStorage
-      try {
-        const savedMemberships = localStorage.getItem('gymMemberships');
-        if (savedMemberships) {
-          const membershipsData = JSON.parse(savedMemberships);
-          if (Array.isArray(membershipsData) && membershipsData.length > 0) {
-            console.log('API error, using membership data from localStorage');
-            
-            // Filter duplicates from localStorage data
-            const uniqueMemberships = membershipsData.filter((membership, index, self) =>
-              index === self.findIndex((m) => m.id === membership.id)
-            );
-            
-            setAvailableMemberships(uniqueMemberships);
-            setMembershipDataSource('localStorage');
-          } else {
-            // Fallback to mock data
-            useMockMembershipData();
-          }
-        } else {
-          // Fallback to mock data
-          useMockMembershipData();
-        }
-      } catch (localStorageError) {
-        console.error('Error reading from localStorage:', localStorageError);
-        // Fallback to mock data
-        useMockMembershipData();
-      }
+      // Nếu API gặp lỗi, sử dụng mock data
+      useMockMembershipData();
     } finally {
       setMembershipLoading(false);
     }
@@ -396,8 +356,7 @@ export default function MemberSubscriptions() {
       }
     ];
     
-    // Also save to localStorage for consistency
-    localStorage.setItem('gymMemberships', JSON.stringify(mockMemberships));
+    // Mock data for development purposes only
     
     setAvailableMemberships(mockMemberships);
     setMembershipDataSource('mock');

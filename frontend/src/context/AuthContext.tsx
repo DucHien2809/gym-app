@@ -19,28 +19,46 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 // Token expiry time in milliseconds (30 days)
 const TOKEN_EXPIRY_TIME = 30 * 24 * 60 * 60 * 1000;
 
-// Function to save token and user info
-const saveAuthData = (token: string, user: User) => {
-  localStorage.setItem('token', token);
-  localStorage.setItem('user', JSON.stringify(user));
-  localStorage.setItem('tokenTimestamp', Date.now().toString());
+// Function to save authentication token only
+const saveAuthToken = (token: string) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('token', token);
+    localStorage.setItem('tokenTimestamp', Date.now().toString());
+    console.log('💾 Token saved to localStorage');
+  }
 };
 
-// Function to clear token and user info
-const clearAuthData = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  localStorage.removeItem('tokenTimestamp');
+// Function to clear authentication token
+const clearAuthToken = () => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user'); // Remove legacy user data if exists
+    localStorage.removeItem('tokenTimestamp');
+    console.log('🗑️ Token cleared from localStorage');
+  }
 };
 
 // Function to check if token is valid
 const isTokenValid = () => {
+  if (typeof window === 'undefined') return false;
+  
   const tokenTimestamp = localStorage.getItem('tokenTimestamp');
-  if (!tokenTimestamp) return false;
+  if (!tokenTimestamp) {
+    console.log('❌ No token timestamp found');
+    return false;
+  }
   
   const timestamp = parseInt(tokenTimestamp, 10);
   const now = Date.now();
-  return now - timestamp < TOKEN_EXPIRY_TIME;
+  const timeElapsed = now - timestamp;
+  const isValid = timeElapsed < TOKEN_EXPIRY_TIME;
+  
+  console.log(`⏰ Token timestamp: ${new Date(timestamp).toLocaleString()}`);
+  console.log(`⏰ Current time: ${new Date(now).toLocaleString()}`);
+  console.log(`⏰ Time elapsed: ${Math.round(timeElapsed / (1000 * 60 * 60))} hours`);
+  console.log(`⏰ Token valid: ${isValid}`);
+  
+  return isValid;
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -62,10 +80,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (response.status === 'success' && response.data?.user) {
         const user = response.data.user as unknown as User;
-        const token = localStorage.getItem('token') || '';
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
         
-        // Update localStorage
-        saveAuthData(token, user);
+        // Token is already saved, user data fetched fresh from API
         
         setAuth({
           user,
@@ -92,48 +109,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkAuth = async () => {
       try {
         setLoading(true);
+        console.log('🔍 Starting auth check...');
         
         // Check if there's a token in localStorage
-        const token = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const tokenTimestamp = typeof window !== 'undefined' ? localStorage.getItem('tokenTimestamp') : null;
+        console.log('📱 Token from localStorage:', token ? 'Found' : 'Not found');
+        console.log('📅 Token timestamp:', tokenTimestamp);
         
-        if (token && storedUser && isTokenValid()) {
-          console.log('Found valid token in localStorage');
+        if (token && isTokenValid()) {
+          console.log('✅ Found valid token in localStorage, verifying with server...');
           
-          // Use user from localStorage for immediate display
-          const user = JSON.parse(storedUser) as User;
-          
+          // Set loading state first while verifying with server
           setAuth({
-            user,
+            user: null, // Will be filled after server verification
             token,
-            isAuthenticated: true,
-            isLoading: true, // set loading while verifying with server
+            isAuthenticated: false, // Will be true after verification
+            isLoading: true,
             error: null,
           });
           
-          // Then verify with server
+          // Verify with server and get user data
           try {
+            console.log('🌐 Calling authAPI.getMe()...');
             const response = await authAPI.getMe();
+            console.log('📡 Server response:', response);
             
             if (response.status === 'success' && response.data?.user) {
-              console.log('User verified with server');
+              console.log('✅ User verified with server:', response.data.user);
               
-              // Update user data if there are changes
-              const updatedUser = response.data.user as unknown as User;
-              
-              // Update localStorage
-              saveAuthData(token, updatedUser);
+              const user = response.data.user as unknown as User;
               
               setAuth({
-                user: updatedUser,
+                user,
                 token,
                 isAuthenticated: true,
                 isLoading: false,
                 error: null,
               });
+              console.log('🎉 Authentication successful! User logged in.');
             } else {
-              console.log('Token invalid according to server response');
-              clearAuthData();
+              console.log('❌ Token invalid according to server response:', response);
+              clearAuthToken();
               
               setAuth({
                 user: null,
@@ -144,9 +161,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               });
             }
           } catch (error) {
-            console.error('Error verifying token with server:', error);
+            console.error('❌ Error verifying token with server:', error);
             // Force clear token and auth state on verification error
-            clearAuthData();
+            clearAuthToken();
             
             setAuth({
               user: null,
@@ -157,8 +174,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
           }
         } else {
-          console.log('No valid token found in localStorage');
-          clearAuthData();
+          console.log('❌ No valid token found in localStorage');
+          console.log('Token exists:', !!token);
+          console.log('Token valid:', token ? isTokenValid() : false);
+          clearAuthToken();
           
           setAuth({
             user: null,
@@ -169,8 +188,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           });
         }
       } catch (error) {
-        console.error('Auth check error:', error);
-        clearAuthData();
+        console.error('❌ Auth check error:', error);
+        clearAuthToken();
         
         setAuth({
           user: null,
@@ -181,6 +200,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
       } finally {
         setLoading(false);
+        console.log('🏁 Auth check completed');
       }
     };
 
@@ -197,8 +217,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const token = response.token;
         const user = response.data.user as unknown as User;
         
-        // Save to localStorage
-        saveAuthData(token, user);
+        // Save token to localStorage, user data will be fresh from API
+        saveAuthToken(token);
         
         setAuth({
           user,
@@ -269,8 +289,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const token = response.token;
         const user = response.data.user as unknown as User;
         
-        // Save to localStorage
-        saveAuthData(token, user);
+        // Save token to localStorage, user data will be fresh from API
+        saveAuthToken(token);
         
         setAuth({
           user,
@@ -308,20 +328,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Logout
   const logout = async () => {
-    // Clear localStorage
-    clearAuthData();
-    
-    // Update state
-    setAuth({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      isLoading: false,
-      error: null,
-    });
-    
-    // Redirect to login page
-    router.push('/auth/login');
+    try {
+      // Clear token and auth state
+      clearAuthToken();
+      
+      setAuth({
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+
+      // Redirect to login page
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (

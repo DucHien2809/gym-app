@@ -4,65 +4,43 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { 
-  FiUsers, 
   FiCalendar, 
   FiClock, 
-  FiClipboard, 
-  FiActivity, 
-  FiTrendingUp, 
-  FiGrid, 
-  FiMessageSquare, 
-  FiAlertCircle,
-  FiSearch,
   FiRefreshCw,
-  FiBell
+  FiArrowRight,
+  FiUsers,
+  FiCheckCircle
 } from 'react-icons/fi';
-import Image from 'next/image';
-import { dashboardAPI } from '@/services/api';
+import { motion } from 'framer-motion';
+import { dashboardAPI, appointmentAPI } from '@/services/api';
 
-// Define types for the dashboard data
+// Define simplified types for the dashboard data
 interface DashboardStats {
-  totalMembers: number;
-  activeMembers: number;
   todayCheckIns: number;
-  upcomingSessions: number;
+  pendingAppointments: number;
+  totalAppointments: number;
+  totalMembers: number;
 }
 
-interface Appointment {
+interface RecentAppointment {
   id: string;
+  title: string;
   memberName: string;
-  time: string;
-  date: string;
-  type: string;
-}
-
-interface Activity {
-  id: string;
-  memberName: string;
-  action: string;
-  time: string;
-}
-
-interface Alert {
-  id: string;
-  memberName: string;
-  issue: string;
-  priority: 'high' | 'medium' | 'low';
+  appointmentDate: string;
+  status: string;
 }
 
 export default function TrainerDashboard() {
-  const { auth, logout } = useAuth();
+  const { auth } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
-    totalMembers: 0,
-    activeMembers: 0,
     todayCheckIns: 0,
-    upcomingSessions: 0
+    pendingAppointments: 0,
+    totalAppointments: 0,
+    totalMembers: 0
   });
-  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
-  const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
-  const [memberAlerts, setMemberAlerts] = useState<Alert[]>([]);
+  const [recentAppointments, setRecentAppointments] = useState<RecentAppointment[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -79,48 +57,48 @@ export default function TrainerDashboard() {
     setLoading(true);
     setError('');
     try {
-      const response = await dashboardAPI.getTrainerDashboardStats();
+      // Fetch basic stats and recent appointments
+      const [dashboardResponse, appointmentsResponse] = await Promise.all([
+        dashboardAPI.getTrainerDashboardStats().catch(() => ({ status: 'error', data: null })),
+        appointmentAPI.getTrainerAppointments(auth.user?.id || '').catch(() => ({ status: 'error', data: null }))
+      ]);
       
-      if (response.status === 'success' && response.data) {
-        // Use a more specific type assertion
-        const data = response.data as unknown as {
-          stats: {
-            totalMembers: number;
-            activeMembers: number;
-            todayCheckIns: number;
-            upcomingSessions: number;
-          };
-          upcomingAppointments: Appointment[];
-          recentActivities: Activity[];
-          memberAlerts: Alert[];
-        };
-        
-        // Set stats with defaults for missing data
+      // Set stats with defaults
+      if (dashboardResponse.status === 'success' && dashboardResponse.data) {
+        const data = dashboardResponse.data as any;
         setStats({
-          totalMembers: data.stats?.totalMembers || 0,
-          activeMembers: data.stats?.activeMembers || 0,
           todayCheckIns: data.stats?.todayCheckIns || 0,
-          upcomingSessions: data.stats?.upcomingSessions || 0
+          pendingAppointments: data.stats?.pendingAppointments || 0,
+          totalAppointments: data.stats?.totalAppointments || 0,
+          totalMembers: data.stats?.totalMembers || 0
         });
-        
-        // Set other data with empty arrays as fallbacks
-        if (Array.isArray(data.upcomingAppointments)) {
-          setUpcomingAppointments(data.upcomingAppointments);
-        }
-        
-        if (Array.isArray(data.recentActivities)) {
-          setRecentActivities(data.recentActivities);
-        }
-        
-        if (Array.isArray(data.memberAlerts)) {
-          setMemberAlerts(data.memberAlerts);
-        }
-      } else {
-        setError('Failed to load dashboard data');
       }
+      
+      // Set recent appointments
+      if (appointmentsResponse.status === 'success' && appointmentsResponse.data?.appointments) {
+        const appointments = appointmentsResponse.data.appointments as any[];
+        const recent = appointments
+          .slice(0, 5)
+          .map(apt => ({
+            id: apt.id,
+            title: apt.title,
+            memberName: apt.member?.name || 'Unknown Member',
+            appointmentDate: apt.appointmentDate,
+            status: apt.status
+          }));
+        setRecentAppointments(recent);
+        
+        // Update stats based on actual appointment data
+        setStats(prev => ({
+          ...prev,
+          totalAppointments: appointments.length,
+          pendingAppointments: appointments.filter(apt => apt.status === 'pending').length
+        }));
+      }
+      
     } catch (error: any) {
       console.error('Error fetching dashboard data:', error);
-      setError(`Failed to fetch dashboard data: ${error.message || JSON.stringify(error)}`);
+      setError('Không thể tải dữ liệu. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -130,7 +108,18 @@ export default function TrainerDashboard() {
     router.push(path);
   };
 
-  const formatDate = () => {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  };
+
+  const formatTodayDate = () => {
     return new Date().toLocaleDateString('vi-VN', {
       weekday: 'long',
       year: 'numeric',
@@ -139,15 +128,45 @@ export default function TrainerDashboard() {
     });
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'accepted':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'Chờ xử lý';
+      case 'accepted':
+        return 'Đã chấp nhận';
+      case 'rejected':
+        return 'Đã từ chối';
+      case 'completed':
+        return 'Hoàn thành';
+      default:
+        return status;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gray-50">
       {/* Page Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 shadow-lg">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-white">Bảng Điều Khiển Huấn Luyện Viên</h1>
-              <p className="mt-1 text-blue-100">{formatDate()}</p>
+              <p className="mt-1 text-blue-100">{formatTodayDate()}</p>
             </div>
             <div className="flex items-center space-x-4">
               <button 
@@ -157,9 +176,6 @@ export default function TrainerDashboard() {
                 <FiRefreshCw className="mr-2 h-4 w-4" />
                 Làm mới
               </button>
-              <div className="relative">
-                <FiBell className="h-6 w-6 text-white cursor-pointer hover:text-blue-200 transition-colors" />
-              </div>
             </div>
           </div>
         </div>
@@ -174,7 +190,7 @@ export default function TrainerDashboard() {
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="rounded-full h-16 w-16 bg-red-100 flex items-center justify-center">
-              <FiAlertCircle className="h-8 w-8 text-red-500" />
+              <FiClock className="h-8 w-8 text-red-500" />
             </div>
             <p className="mt-4 text-lg text-gray-600">{error}</p>
             <button 
@@ -189,35 +205,17 @@ export default function TrainerDashboard() {
           <>
             {/* Stats Overview */}
             <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Total Members */}
-              <div className="overflow-hidden rounded-xl bg-white shadow-md transition-all hover:shadow-lg border border-gray-100">
-                <div className="px-4 py-5 sm:p-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                      <FiUsers className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="truncate text-sm font-medium text-gray-500">Tổng Số Thành Viên</dt>
-                        <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">{stats.totalMembers}</dd>
-                      </dl>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex items-center text-sm text-blue-600">
-                      <FiActivity className="h-4 w-4 mr-1" />
-                      <span className="font-medium">{stats.activeMembers} thành viên đang hoạt động</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Today's Check-ins */}
-              <div className="overflow-hidden rounded-xl bg-white shadow-md transition-all hover:shadow-lg border border-gray-100">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden rounded-xl bg-white shadow-lg transition-all hover:shadow-xl border border-gray-100"
+              >
                 <div className="px-4 py-5 sm:p-6">
                   <div className="flex items-center">
-                    <div className="flex-shrink-0 bg-green-100 rounded-md p-3">
-                      <FiClock className="h-6 w-6 text-green-600" />
+                    <div className="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                      <FiCheckCircle className="h-6 w-6 text-green-600" />
                     </div>
                     <div className="ml-5 w-0 flex-1">
                       <dl>
@@ -226,276 +224,174 @@ export default function TrainerDashboard() {
                       </dl>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <button 
-                      onClick={() => handleNavigation('/dashboard/trainer/check-in')}
-                      className="inline-flex items-center text-sm font-medium text-green-600"
-                    >
-                      Quản lý điểm danh
-                      <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  </div>
                 </div>
-              </div>
+              </motion.div>
 
-              {/* Upcoming Sessions */}
-              <div className="overflow-hidden rounded-xl bg-white shadow-md transition-all hover:shadow-lg border border-gray-100">
+              {/* Pending Appointments */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+                className="overflow-hidden rounded-xl bg-white shadow-lg transition-all hover:shadow-xl border border-gray-100"
+              >
                 <div className="px-4 py-5 sm:p-6">
                   <div className="flex items-center">
-                    <div className="flex-shrink-0 bg-purple-100 rounded-md p-3">
-                      <FiCalendar className="h-6 w-6 text-purple-600" />
+                    <div className="flex-shrink-0 bg-yellow-100 rounded-lg p-3">
+                      <FiClock className="h-6 w-6 text-yellow-600" />
                     </div>
                     <div className="ml-5 w-0 flex-1">
                       <dl>
-                        <dt className="truncate text-sm font-medium text-gray-500">Buổi Tập Sắp Tới</dt>
-                        <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">{stats.upcomingSessions}</dd>
+                        <dt className="truncate text-sm font-medium text-gray-500">Lịch Hẹn Chờ Xử Lý</dt>
+                        <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">{stats.pendingAppointments}</dd>
                       </dl>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <button 
-                      onClick={() => handleNavigation('/dashboard/trainer/schedule')}
-                      className="inline-flex items-center text-sm font-medium text-purple-600"
-                    >
-                      Xem lịch trình
-                      <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  </div>
                 </div>
-              </div>
+              </motion.div>
 
-              {/* Quick Actions */}
-              <div className="overflow-hidden rounded-xl bg-white shadow-md transition-all hover:shadow-lg border border-gray-100">
+              {/* Total Appointments */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.2 }}
+                className="overflow-hidden rounded-xl bg-white shadow-lg transition-all hover:shadow-xl border border-gray-100"
+              >
                 <div className="px-4 py-5 sm:p-6">
-                  <h3 className="text-lg font-medium text-gray-900">Thao Tác Nhanh</h3>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <button 
-                      onClick={() => handleNavigation('/dashboard/trainer/check-in')}
-                      className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <FiClock className="mr-2 h-4 w-4" />
-                      Điểm danh
-                    </button>
-                    <button 
-                      onClick={() => handleNavigation('/dashboard/trainer/members')}
-                      className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <FiUsers className="mr-2 h-4 w-4" />
-                      Thành viên
-                    </button>
-                    <button 
-                      onClick={() => handleNavigation('/dashboard/trainer/workouts')}
-                      className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <FiActivity className="mr-2 h-4 w-4" />
-                      Bài tập
-                    </button>
-                    <button 
-                      onClick={() => handleNavigation('/dashboard/trainer/schedule')}
-                      className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <FiCalendar className="mr-2 h-4 w-4" />
-                      Lịch trình
-                    </button>
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                      <FiCalendar className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="truncate text-sm font-medium text-gray-500">Tổng Lịch Hẹn</dt>
+                        <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">{stats.totalAppointments}</dd>
+                      </dl>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
+
+              {/* Total Members */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.3 }}
+                className="overflow-hidden rounded-xl bg-white shadow-lg transition-all hover:shadow-xl border border-gray-100"
+              >
+                <div className="px-4 py-5 sm:p-6">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                      <FiUsers className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="truncate text-sm font-medium text-gray-500">Tổng Thành Viên</dt>
+                        <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">{stats.totalMembers}</dd>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             </div>
 
-            {/* Main Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column - Upcoming Appointments */}
-              <div className="lg:col-span-2">
-                <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
-                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600">
-                    <h2 className="text-xl font-semibold text-white flex items-center">
-                      <FiCalendar className="mr-2" /> Lịch Hẹn Sắp Tới
-                    </h2>
-                  </div>
-                  <div className="p-6">
-                    {upcomingAppointments.length > 0 ? (
-                      <div className="divide-y divide-gray-200">
-                        {upcomingAppointments.map((appointment) => (
-                          <div key={appointment.id} className="py-4 flex justify-between items-center">
+            {/* Main Features */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              {/* Appointment Management */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="bg-white rounded-xl shadow-lg overflow-hidden"
+              >
+                <div className="px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600">
+                  <h2 className="text-xl font-semibold text-white flex items-center">
+                    <FiCalendar className="mr-3 h-6 w-6" /> 
+                    Quản Lý Lịch Hẹn
+                  </h2>
+                </div>
+                <div className="p-6">
+                  <p className="text-gray-600 mb-6">
+                    Xem và quản lý tất cả các yêu cầu lịch hẹn từ học viên. Chấp nhận, từ chối hoặc đánh dấu hoàn thành các buổi tập.
+                  </p>
+                  
+                  {recentAppointments.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-sm font-medium text-gray-700 mb-3">Lịch hẹn gần đây:</h3>
+                      <div className="space-y-3">
+                        {recentAppointments.slice(0, 3).map((appointment) => (
+                          <div key={appointment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                             <div>
-                              <h3 className="text-lg font-medium text-gray-900">{appointment.memberName}</h3>
-                              <div className="mt-1 flex items-center">
-                                <span className="text-sm text-gray-500 mr-3">{appointment.time} - {appointment.date}</span>
-                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                  {appointment.type}
-                                </span>
-                              </div>
+                              <p className="text-sm font-medium text-gray-900">{appointment.title}</p>
+                              <p className="text-xs text-gray-500">{appointment.memberName}</p>
+                              <p className="text-xs text-gray-500">{formatDate(appointment.appointmentDate)}</p>
                             </div>
-                            <div className="flex space-x-2">
-                              <button className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                Chi tiết
-                              </button>
-                            </div>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(appointment.status)}`}>
+                              {getStatusText(appointment.status)}
+                            </span>
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <div className="text-center py-4">
-                        <p className="text-gray-500">Không có lịch hẹn sắp tới</p>
-                      </div>
-                    )}
-                    <div className="mt-4 text-center">
-                      <button 
-                        onClick={() => handleNavigation('/dashboard/trainer/schedule')}
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        Xem tất cả lịch hẹn
-                      </button>
                     </div>
-                  </div>
+                  )}
+                  
+                  <button
+                    onClick={() => handleNavigation('/dashboard/trainer/appointments')}
+                    className="w-full inline-flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                  >
+                    Xem Tất Cả Lịch Hẹn
+                    <FiArrowRight className="ml-2 h-4 w-4" />
+                  </button>
                 </div>
+              </motion.div>
 
-                {/* Recent Activities */}
-                <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                  <div className="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600">
-                    <h2 className="text-xl font-semibold text-white flex items-center">
-                      <FiActivity className="mr-2" /> Hoạt Động Gần Đây
-                    </h2>
-                  </div>
-                  <div className="p-6">
-                    {recentActivities.length > 0 ? (
-                      <div className="space-y-4">
-                        {recentActivities.map((activity) => (
-                          <div key={activity.id} className="flex items-start">
-                            <div className="flex-shrink-0">
-                              <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                                <span className="text-green-600 font-medium">
-                                  {activity.memberName.charAt(0)}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="ml-3">
-                              <p className="text-sm text-gray-700">
-                                <span className="font-medium">{activity.memberName}</span> {activity.action}
-                              </p>
-                              <p className="text-xs text-gray-500">{activity.time}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4">
-                        <p className="text-gray-500">Không có hoạt động gần đây</p>
-                      </div>
-                    )}
-                  </div>
+              {/* Attendance Management */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+                className="bg-white rounded-xl shadow-lg overflow-hidden"
+              >
+                <div className="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600">
+                  <h2 className="text-xl font-semibold text-white flex items-center">
+                    <FiCheckCircle className="mr-3 h-6 w-6" /> 
+                    Quản Lý Điểm Danh
+                  </h2>
                 </div>
-              </div>
-
-              {/* Right Column - Member Alerts & Quick Access */}
-              <div>
-                {/* Member Alerts */}
-                <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6">
-                  <div className="px-6 py-4 bg-gradient-to-r from-amber-500 to-amber-600">
-                    <h2 className="text-xl font-semibold text-white flex items-center">
-                      <FiAlertCircle className="mr-2" /> Cảnh Báo Thành Viên
-                    </h2>
-                  </div>
-                  <div className="p-6">
-                    {memberAlerts.length > 0 ? (
-                      <div className="space-y-4">
-                        {memberAlerts.map((alert) => (
-                          <div 
-                            key={alert.id} 
-                            className={`p-3 rounded-lg border ${
-                              alert.priority === 'high' ? 'border-red-200 bg-red-50' : 
-                              alert.priority === 'medium' ? 'border-amber-200 bg-amber-50' : 
-                              'border-blue-200 bg-blue-50'
-                            }`}
-                          >
-                            <div className="flex justify-between items-center">
-                              <h3 className="font-medium text-gray-900">{alert.memberName}</h3>
-                              <span 
-                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                  alert.priority === 'high' ? 'bg-red-100 text-red-800' : 
-                                  alert.priority === 'medium' ? 'bg-amber-100 text-amber-800' : 
-                                  'bg-blue-100 text-blue-800'
-                                }`}
-                              >
-                                {alert.priority === 'high' ? 'Cao' : 
-                                 alert.priority === 'medium' ? 'Trung bình' : 'Thấp'}
-                              </span>
-                            </div>
-                            <p className="mt-1 text-sm text-gray-600">{alert.issue}</p>
-                            <div className="mt-2 text-right">
-                              <button className="text-sm text-blue-600 hover:text-blue-800">
-                                Xử lý
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4">
-                        <p className="text-gray-500">Không có cảnh báo nào</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Quick Access */}
-                <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                  <div className="px-6 py-4 bg-gradient-to-r from-indigo-500 to-indigo-600">
-                    <h2 className="text-xl font-semibold text-white flex items-center">
-                      <FiGrid className="mr-2" /> Truy Cập Nhanh
-                    </h2>
-                  </div>
-                  <div className="p-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <button
-                        onClick={() => handleNavigation('/dashboard/trainer/workouts')}
-                        className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-indigo-50 transition-colors"
-                      >
-                        <FiClipboard className="h-8 w-8 text-indigo-600" />
-                        <span className="mt-2 text-sm font-medium text-gray-900">Bài Tập</span>
-                      </button>
-                      <button
-                        onClick={() => handleNavigation('/dashboard/trainer/progress')}
-                        className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-indigo-50 transition-colors"
-                      >
-                        <FiTrendingUp className="h-8 w-8 text-indigo-600" />
-                        <span className="mt-2 text-sm font-medium text-gray-900">Tiến Độ</span>
-                      </button>
-                      <button
-                        onClick={() => handleNavigation('/dashboard/trainer/messages')}
-                        className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-indigo-50 transition-colors"
-                      >
-                        <FiMessageSquare className="h-8 w-8 text-indigo-600" />
-                        <span className="mt-2 text-sm font-medium text-gray-900">Tin Nhắn</span>
-                      </button>
-                      <button
-                        onClick={() => handleNavigation('/dashboard/trainer/subscriptions')}
-                        className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-indigo-50 transition-colors"
-                      >
-                        <FiUsers className="h-8 w-8 text-indigo-600" />
-                        <span className="mt-2 text-sm font-medium text-gray-900">Gói Tập</span>
-                      </button>
-                    </div>
-                    
-                    <div className="mt-6">
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <FiSearch className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <input
-                          type="text"
-                          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          placeholder="Tìm kiếm thành viên..."
-                        />
+                <div className="p-6">
+                  <p className="text-gray-600 mb-6">
+                    Theo dõi việc điểm danh của học viên, xem lịch sử tham gia các buổi tập và thống kê tần suất tập luyện.
+                  </p>
+                  
+                  <div className="mb-6">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center">
+                        <FiCheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                        <span className="text-sm font-medium text-green-800">
+                          Đã có {stats.todayCheckIns} lượt điểm danh hôm nay
+                        </span>
                       </div>
                     </div>
                   </div>
+                  
+                  <div className="space-y-3 mb-6">
+                    <button
+                      onClick={() => handleNavigation('/dashboard/trainer/attendance')}
+                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-green-200 text-sm font-medium rounded-lg text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+                    >
+                      Xem Lịch Sử Điểm Danh
+                      <FiArrowRight className="ml-2 h-4 w-4" />
+                    </button>
+                  </div>
+                  
+                  <button
+                    onClick={() => handleNavigation('/dashboard/trainer/check-in')}
+                    className="w-full inline-flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+                  >
+                    Điểm Danh Mới
+                    <FiArrowRight className="ml-2 h-4 w-4" />
+                  </button>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </>
         )}

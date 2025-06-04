@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
+const path = require('path');
 const prisma = require('./src/lib/prisma');
 const { errorHandler } = require('./src/middleware/error.middleware');
 
@@ -16,6 +17,7 @@ const exerciseRoutes = require('./src/routes/exercise.routes');
 const dashboardRoutes = require('./src/routes/dashboard.routes');
 const cancellationRoutes = require('./src/routes/cancellation.routes');
 const appointmentRoutes = require('./src/routes/appointment.routes');
+const uploadRoutes = require('./src/routes/upload.routes');
 
 // Load env variables
 dotenv.config();
@@ -40,6 +42,9 @@ app.use(cookieParser()); // Parse cookies
 // Enable pre-flight for all routes
 app.options('*', cors(corsOptions));
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -51,6 +56,7 @@ app.use('/api/exercises', exerciseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/cancellations', cancellationRoutes);
 app.use('/api/appointments', appointmentRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Default route
 app.get('/', (req, res) => {

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { equipmentAPI } from '@/services/api';
+import { equipmentAPI, uploadAPI } from '@/services/api';
 import { FiSave, FiX, FiUpload } from 'react-icons/fi';
 import Link from 'next/link';
 
@@ -15,10 +15,18 @@ export default function AddEquipmentPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Danh mục thiết bị
-  const categories = ['Cardio', 'Strength', 'Flexibility', 'Free Weights', 'Machines', 'Accessories'];
+  const categories = ['Cardio', 'Sức mạnh', 'Linh hoạt', 'Tạ tự do', 'Máy tập', 'Phụ kiện'];
   
   // Trạng thái thiết bị
   const statuses = ['available', 'in-use', 'maintenance', 'retired'];
+
+  // Status labels in Vietnamese
+  const statusLabels: { [key: string]: string } = {
+    'available': 'Có sẵn',
+    'in-use': 'Đang sử dụng',
+    'maintenance': 'Bảo trì',
+    'retired': 'Ngừng sử dụng'
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -94,25 +102,18 @@ export default function AddEquipmentPage() {
       // Tải lên hình ảnh nếu có
       let imageUrl = formData.image;
       if (imageFile) {
-        // Tạo FormData để tải lên hình ảnh
-        const imageData = new FormData();
-        imageData.append('file', imageFile);
-        
         try {
-          // Gọi API tải lên hình ảnh
-          const uploadResponse = await fetch('/api/upload', {
-            method: 'POST',
-            body: imageData,
-          });
+          // Sử dụng uploadAPI service đã có sẵn
+          const uploadResult = await uploadAPI.uploadFile(imageFile);
           
-          if (!uploadResponse.ok) {
+          if (uploadResult.status === 'success' && uploadResult.data) {
+            imageUrl = String(uploadResult.data.url); // Lấy URL hình ảnh từ kết quả
+          } else {
             throw new Error('Không thể tải lên hình ảnh');
           }
-          
-          const uploadResult = await uploadResponse.json();
-          imageUrl = uploadResult.url; // Lấy URL hình ảnh từ kết quả
-        } catch (uploadErr) {
-          throw new Error('Lỗi khi tải lên hình ảnh. Vui lòng thử lại.');
+        } catch (uploadErr: any) {
+          console.error('Upload error:', uploadErr);
+          throw new Error(uploadErr.message || 'Lỗi khi tải lên hình ảnh. Vui lòng thử lại.');
         }
       }
 
