@@ -1,0 +1,65 @@
+/* Font utilities for consistency across the application */
+
+/* Ensure all text elements use proper font family */
+* {
+  font-family: var(--font-poppins), 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Text color consistency fixes */
+.text-primary {
+  color: #1f2937 !important;
+}
+
+.text-secondary {
+  color: #6b7280 !important;
+}
+
+.text-muted {
+  color: #9ca3af !important;
+}
+
+/* Override any hardcoded text colors */
+[style*="color: #1f2937"] {
+  color: #1f2937 !important;
+}
+
+[style*="color: #6b7280"] {
+  color: #6b7280 !important;
+}
+
+[style*="color: #374151"] {
+  color: #374151 !important;
+}
+
+/* Ensure proper text visibility in all themes */
+.dark [class*="text-gray-900"] {
+  color: #f9fafb !important;
+}
+
+.dark [class*="text-gray-800"] {
+  color: #f3f4f6 !important;
+}
+
+.dark [class*="text-gray-700"] {
+  color: #e5e7eb !important;
+}
+
+/* Font weight consistency */
+.font-display {
+  font-family: var(--font-poppins), 'Poppins', sans-serif;
+  font-weight: 600;
+}
+
+.font-body {
+  font-family: var(--font-poppins), 'Poppins', sans-serif;
+  font-weight: 400;
+}
+
+/* Prevent font loading issues */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: local('Poppins');
+} 

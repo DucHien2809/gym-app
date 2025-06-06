@@ -10,7 +10,8 @@ exports.getAllSubscriptions = async (req, res) => {
             id: true,
             name: true,
             email: true,
-            phone: true
+            phone: true,
+            profileImage: true
           }
         },
         membership: {
@@ -96,7 +97,8 @@ exports.getSubscription = async (req, res) => {
             id: true,
             name: true,
             email: true,
-            phone: true
+            phone: true,
+            profileImage: true
           }
         },
         membership: {
@@ -236,15 +238,31 @@ exports.createSubscription = async (req, res) => {
 // Cập nhật trạng thái thanh toán
 exports.updatePaymentStatus = async (req, res) => {
   try {
-    const { paymentStatus, paymentMethod, paymentDate } = req.body;
+    const { paymentStatus, paymentMethod, paymentDate, notes } = req.body;
+    
+    // Prepare update data
+    const updateData = {
+      paymentStatus,
+    };
+    
+    // Only set payment method if provided
+    if (paymentMethod) {
+      updateData.paymentMethod = paymentMethod;
+    }
+    
+    // Only set payment date if status is completed and date is provided
+    if (paymentStatus === 'completed') {
+      updateData.paymentDate = paymentDate ? new Date(paymentDate) : new Date();
+    }
+    
+    // Set notes if provided
+    if (notes) {
+      updateData.notes = notes;
+    }
     
     const subscription = await prisma.subscription.update({
       where: { id: req.params.id },
-      data: {
-        paymentStatus,
-        paymentMethod,
-        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-      },
+      data: updateData,
       include: {
         member: {
           select: {

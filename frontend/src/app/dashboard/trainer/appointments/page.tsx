@@ -47,6 +47,7 @@ export default function TrainerAppointments() {
   const [isClosing, setIsClosing] = useState(false);
   const [responseNotes, setResponseNotes] = useState('');
   const [responseAction, setResponseAction] = useState<'accept' | 'reject' | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Fetch appointments data
   useEffect(() => {
@@ -177,11 +178,12 @@ export default function TrainerAppointments() {
     try {
       // Convert 'accept' action to 'accepted' status and 'reject' action to 'rejected' status
       const statusValue = responseAction === 'accept' ? 'accepted' : 'rejected';
-      
-      const response = await appointmentAPI.updateAppointmentStatus(selectedAppointment.id, {
+      const payload = {
         status: statusValue,
         notes: responseNotes || `Appointment ${responseAction === 'accept' ? 'accepted' : 'rejected'} by trainer`
-      });
+      };
+      
+      const response = await appointmentAPI.updateAppointmentStatus(selectedAppointment.id, payload);
       
       if (response.status === 'success' && response.data?.appointment) {
         // Update the appointment in the state
@@ -196,19 +198,31 @@ export default function TrainerAppointments() {
           )
         );
         
-        alert(`Appointment ${responseAction === 'accept' ? 'accepted' : 'rejected'} successfully!`);
+        setNotification({
+          message: `Lịch hẹn đã được ${responseAction === 'accept' ? 'chấp nhận' : 'từ chối'} thành công!`,
+          type: 'success'
+        });
         closeResponseModal();
+        
+        // Clear notification after 5 seconds
+        setTimeout(() => setNotification(null), 5000);
       }
     } catch (error) {
       console.error(`Error ${responseAction}ing appointment:`, error);
-      alert(`Error ${responseAction}ing appointment. Please try again later.`);
+      setNotification({
+        message: `Lỗi khi ${responseAction === 'accept' ? 'chấp nhận' : 'từ chối'} lịch hẹn. Vui lòng thử lại sau.`,
+        type: 'error'
+      });
+      
+      // Clear notification after 5 seconds
+      setTimeout(() => setNotification(null), 5000);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleMarkAsCompleted = async (id: string) => {
-    if (window.confirm('Are you sure you want to mark this appointment as completed?')) {
+    if (window.confirm('Bạn có chắc chắn muốn đánh dấu lịch hẹn này là hoàn thành?')) {
       try {
         const response = await appointmentAPI.updateAppointmentStatus(id, {
           status: 'completed',
@@ -224,11 +238,23 @@ export default function TrainerAppointments() {
                 : appointment
             )
           );
-          alert('Appointment marked as completed!');
+          setNotification({
+            message: 'Lịch hẹn đã được đánh dấu hoàn thành!',
+            type: 'success'
+          });
+          
+          // Clear notification after 5 seconds
+          setTimeout(() => setNotification(null), 5000);
         }
       } catch (error) {
         console.error('Error marking appointment as completed:', error);
-        alert('Error updating appointment. Please try again later.');
+        setNotification({
+          message: 'Lỗi khi cập nhật lịch hẹn. Vui lòng thử lại sau.',
+          type: 'error'
+        });
+        
+        // Clear notification after 5 seconds
+        setTimeout(() => setNotification(null), 5000);
       }
     }
   };
@@ -256,6 +282,35 @@ export default function TrainerAppointments() {
       </div>
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Notification */}
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`${
+              notification.type === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'
+            } mb-6 rounded-lg p-4 border flex items-start`}
+          >
+            <div className="flex-shrink-0">
+              {notification.type === 'success' ? (
+                <FiCheck className="h-5 w-5 text-green-500" />
+              ) : (
+                <FiX className="h-5 w-5 text-red-500" />
+              )}
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium">{notification.message}</p>
+            </div>
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-auto -mx-1.5 -my-1.5 rounded-lg p-1.5 hover:bg-gray-100 focus:outline-none"
+            >
+              <FiX className="h-4 w-4" />
+            </button>
+          </motion.div>
+        )}
+        
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
@@ -324,8 +379,8 @@ export default function TrainerAppointments() {
                     <FiCalendar className="text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500" style={{ color: '#6b7280' }}>Tổng cộng</p>
-                    <p className="text-xl font-semibold" style={{ color: '#1f2937' }}>{appointments.length}</p>
+                                    <p className="text-sm text-gray-500">Tổng cộng</p>
+                <p className="text-xl font-semibold text-gray-900">{appointments.length}</p>
                   </div>
                 </div>
               </div>
@@ -424,18 +479,28 @@ export default function TrainerAppointments() {
                           {appointment.status === 'pending' && (
                             <>
                               <button
-                                onClick={() => openResponseModal(appointment, 'accept')}
-                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openResponseModal(appointment, 'accept');
+                                }}
+                                disabled={isSubmitting}
+                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <FiCheck className="w-4 h-4 mr-1" />
-                                Accept
+                                Chấp nhận
                               </button>
                               <button
-                                onClick={() => openResponseModal(appointment, 'reject')}
-                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openResponseModal(appointment, 'reject');
+                                }}
+                                disabled={isSubmitting}
+                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <FiX className="w-4 h-4 mr-1" />
-                                Decline
+                                Từ chối
                               </button>
                             </>
                           )}
@@ -446,7 +511,7 @@ export default function TrainerAppointments() {
                               className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                             >
                               <FiCheck className="w-4 h-4 mr-1" />
-                              Mark Completed
+                              Đánh dấu hoàn thành
                             </button>
                           )}
                         </div>
@@ -476,100 +541,91 @@ export default function TrainerAppointments() {
 
       {/* Response Modal */}
       {isResponseModalOpen && selectedAppointment && responseAction && (
-        <div className="fixed z-50 inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Overlay */}
-            <div 
-              className={`fixed inset-0 bg-gray-500 transition-opacity ${isClosing ? 'bg-opacity-0' : 'bg-opacity-75'}`}
-              style={{ transitionDuration: '200ms' }}
-              aria-hidden="true" 
-              onClick={closeResponseModal}
-            ></div>
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" 
+          style={{ zIndex: 9999 }}
+          onClick={closeResponseModal}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-screen overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`px-4 py-3 sm:px-6 flex justify-between items-center ${
+              responseAction === 'accept' ? 'bg-gradient-to-r from-green-600 to-teal-600' : 'bg-gradient-to-r from-red-600 to-pink-600'
+            }`}>
+              <h3 className="text-lg leading-6 font-medium text-white">
+                {responseAction === 'accept' ? 'Chấp nhận lịch hẹn' : 'Từ chối lịch hẹn'}
+              </h3>
+              <button 
+                onClick={closeResponseModal}
+                className="bg-transparent rounded-full p-1 inline-flex items-center justify-center text-white hover:bg-white hover:bg-opacity-20 focus:outline-none"
+              >
+                <FiX className="h-5 w-5" />
+              </button>
+            </div>
             
-            {/* Centering trick */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
-            {/* Modal Panel */}
-            <div 
-              className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${isClosing ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
-              style={{ transitionDuration: '200ms' }}
-            >
-              <div className={`px-4 py-3 sm:px-6 flex justify-between items-center ${
-                responseAction === 'accept' ? 'bg-gradient-to-r from-green-600 to-teal-600' : 'bg-gradient-to-r from-red-600 to-pink-600'
-              }`}>
-                <h3 className="text-lg leading-6 font-medium text-white">
-                  {responseAction === 'accept' ? 'Accept Appointment' : 'Decline Appointment'}
-                </h3>
-                <button 
-                  onClick={closeResponseModal}
-                  className="bg-transparent rounded-full p-1 inline-flex items-center justify-center text-white hover:bg-white hover:bg-opacity-20 focus:outline-none"
-                >
-                  <FiX className="h-5 w-5" />
-                </button>
-              </div>
-              
-              <form onSubmit={handleResponseSubmit}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-lg font-medium text-gray-900" style={{ color: '#1f2937' }}>
-                        {selectedAppointment.title}
-                      </h4>
-                      <p className="text-sm text-gray-500" style={{ color: '#6b7280' }}>
-                        Member: {selectedAppointment.member?.name}
-                      </p>
-                      <p className="text-sm text-gray-500" style={{ color: '#6b7280' }}>
-                        Date: {formatDate(selectedAppointment.appointmentDate)} at {formatTime(selectedAppointment.appointmentDate)}
-                      </p>
-                      <p className="text-sm text-gray-500" style={{ color: '#6b7280' }}>
-                        Duration: {formatDuration(selectedAppointment.duration)}
-                      </p>
+            <form onSubmit={handleResponseSubmit}>
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900">
+                      {selectedAppointment.title}
+                    </h4>
+                    <p className="text-sm text-gray-500">
+                      Thành viên: {selectedAppointment.member?.name}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Ngày: {formatDate(selectedAppointment.appointmentDate)} lúc {formatTime(selectedAppointment.appointmentDate)}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Thời gian: {formatDuration(selectedAppointment.duration)}
+                    </p>
+                  </div>
+                  
+                  {selectedAppointment.description && (
+                    <div className="rounded-md bg-gray-50 p-3">
+                      <p className="text-sm text-gray-500 font-medium">Mô tả từ thành viên:</p>
+                      <p className="text-sm text-gray-700">{selectedAppointment.description}</p>
                     </div>
-                    
-                    {selectedAppointment.description && (
-                      <div className="rounded-md bg-gray-50 p-3">
-                        <p className="text-sm text-gray-500 font-medium" style={{ color: '#6b7280' }}>Member's description:</p>
-                        <p className="text-sm text-gray-700" style={{ color: '#374151' }}>{selectedAppointment.description}</p>
-                      </div>
-                    )}
-                    
-                    <div>
-                      <label htmlFor="responseNotes" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                        <FiMessageSquare className="mr-1 text-gray-600" /> Add a note to the member
-                      </label>
-                      <textarea
-                        id="responseNotes"
-                        rows={3}
-                        value={responseNotes}
-                        onChange={(e) => setResponseNotes(e.target.value)}
-                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700"
-                        placeholder={`Explain why you are ${responseAction === 'accept' ? 'accepting' : 'declining'} this appointment...`}
-                      />
-                    </div>
+                  )}
+                  
+                  <div>
+                    <label htmlFor="responseNotes" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                      <FiMessageSquare className="mr-1 text-gray-600" /> Thêm ghi chú cho thành viên
+                    </label>
+                    <textarea
+                      id="responseNotes"
+                      rows={3}
+                      value={responseNotes}
+                      onChange={(e) => setResponseNotes(e.target.value)}
+                      className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700"
+                      placeholder={`Giải thích lý do bạn ${responseAction === 'accept' ? 'chấp nhận' : 'từ chối'} lịch hẹn này...`}
+                    />
                   </div>
                 </div>
-                
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 ${
-                      responseAction === 'accept' 
-                        ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' 
-                        : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                    } text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${
-                      isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-                    }`}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Processing...
+              </div>
+              
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 ${
+                    responseAction === 'accept' 
+                      ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' 
+                      : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                  } text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${
+                    isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                                              Đang xử lý...
                       </>
-                    ) : responseAction === 'accept' ? 'Confirm Accept' : 'Confirm Decline'}
+                    ) : responseAction === 'accept' ? 'Xác nhận chấp nhận' : 'Xác nhận từ chối'}
                   </button>
                   <button
                     type="button"
@@ -577,11 +633,10 @@ export default function TrainerAppointments() {
                     onClick={closeResponseModal}
                     disabled={isSubmitting}
                   >
-                    Cancel
+                    Hủy
                   </button>
-                </div>
-              </form>
-            </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

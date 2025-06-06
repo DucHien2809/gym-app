@@ -22,7 +22,7 @@ exports.createEquipment = async (req, res) => {
       lastMaintenance,
       nextMaintenance,
       notes,
-      image
+      imageBase64
     } = req.body;
 
     // Validate required fields
@@ -48,7 +48,7 @@ exports.createEquipment = async (req, res) => {
         lastMaintenance: lastMaintenance ? new Date(lastMaintenance) : null,
         nextMaintenance: nextMaintenance ? new Date(nextMaintenance) : null,
         notes,
-        image,
+        imageBase64,
         createdById: req.user.id
       }
     });
@@ -227,7 +227,7 @@ exports.updateEquipment = async (req, res) => {
       lastMaintenance,
       nextMaintenance,
       notes,
-      image
+      imageBase64
     } = req.body;
 
     // Check if equipment exists
@@ -259,7 +259,7 @@ exports.updateEquipment = async (req, res) => {
         lastMaintenance: lastMaintenance ? new Date(lastMaintenance) : existingEquipment.lastMaintenance,
         nextMaintenance: nextMaintenance ? new Date(nextMaintenance) : existingEquipment.nextMaintenance,
         notes: notes ?? existingEquipment.notes,
-        image: image ?? existingEquipment.image,
+        imageBase64: imageBase64 ?? existingEquipment.imageBase64,
         updatedAt: new Date()
       }
     });

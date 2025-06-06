@@ -4,8 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { equipmentAPI } from '@/services/api';
 import { Equipment } from '@/types';
-import { FiSave, FiX, FiArrowLeft } from 'react-icons/fi';
+import { FiSave, FiX, FiArrowLeft, FiUpload, FiTrash2 } from 'react-icons/fi';
 import Link from 'next/link';
+import { 
+  fileToBase64, 
+  base64ToImageUrl, 
+  resizeImageToBase64, 
+  isValidImageFile, 
+  isValidImageSize 
+} from '@/utils/imageUtils';
 
 interface Props {
   params: Promise<{
@@ -48,8 +55,11 @@ export default function EditEquipmentPage({ params }: Props) {
     status: '',
     location: '',
     notes: '',
-    image: ''
+    imageBase64: ''
   });
+
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
 
   // Fetch equipment details
   useEffect(() => {
@@ -76,8 +86,13 @@ export default function EditEquipmentPage({ params }: Props) {
             status: equipment.status,
             location: equipment.location || '',
             notes: equipment.notes || '',
-            image: equipment.image || 'default-equipment.jpg'
+            imageBase64: equipment.imageBase64 || ''
           });
+
+          // Set image preview if available
+          if (equipment.imageBase64) {
+            setImagePreview(base64ToImageUrl(equipment.imageBase64));
+          }
         }
         setError(null);
       } catch (err: any) {
@@ -97,6 +112,52 @@ export default function EditEquipmentPage({ params }: Props) {
       ...prev,
       [name]: value
     }));
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file
+    if (!isValidImageFile(file)) {
+      setError('Vui lòng chọn file ảnh hợp lệ (JPG, JPEG, PNG, WebP)');
+      return;
+    }
+
+    if (!isValidImageSize(file)) {
+      setError('Kích thước file không được vượt quá 5MB');
+      return;
+    }
+
+    setIsUploading(true);
+    setError(null);
+
+    try {
+      // Resize and convert to base64
+      const base64String = await resizeImageToBase64(file, 800, 600, 0.8);
+      
+      setFormData((prev) => ({
+        ...prev,
+        imageBase64: base64String
+      }));
+      
+      // Set preview
+      setImagePreview(base64ToImageUrl(base64String));
+    } catch (err) {
+      setError('Lỗi khi xử lý ảnh');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Remove image
+  const handleRemoveImage = () => {
+    setFormData((prev) => ({
+      ...prev,
+      imageBase64: ''
+    }));
+    setImagePreview('');
   };
 
   // Handle form submission
@@ -305,18 +366,57 @@ export default function EditEquipmentPage({ params }: Props) {
               />
             </div>
 
-            {/* Image URL */}
-            <div>
+            {/* Image Upload */}
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                URL hình ảnh
+                Hình ảnh thiết bị
               </label>
-              <input
-                type="text"
-                name="image"
-                value={formData.image}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-md text-gray-900"
-              />
+              
+              {/* Image Preview */}
+              {imagePreview && (
+                <div className="mb-4 relative inline-block">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-48 h-36 object-cover rounded-lg border"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+                  >
+                    <FiTrash2 size={12} />
+                  </button>
+                </div>
+              )}
+
+              {/* File Input */}
+              <div className="flex items-center gap-4">
+                <label className="bg-blue-500 text-white px-4 py-2 rounded-md cursor-pointer hover:bg-blue-600 flex items-center gap-2">
+                  <FiUpload /> 
+                  {isUploading ? 'Đang tải...' : (imagePreview ? 'Thay đổi ảnh' : 'Chọn ảnh từ thiết bị')}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={isUploading}
+                  />
+                </label>
+                {imagePreview && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 flex items-center gap-2"
+                  >
+                    <FiTrash2 /> Xóa ảnh
+                  </button>
+                )}
+              </div>
+              
+              <p className="text-sm text-gray-500 mt-2">
+                Chọn ảnh JPG, JPEG, PNG, hoặc WebP. Kích thước tối đa 5MB. Ảnh sẽ được tự động resize về 800x600px.
+              </p>
             </div>
           </div>
 

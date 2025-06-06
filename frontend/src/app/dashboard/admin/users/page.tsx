@@ -18,8 +18,6 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiEye,
-  FiLock,
-  FiUnlock,
   FiKey,
   FiSend
 } from 'react-icons/fi';
@@ -104,7 +102,6 @@ export default function UserManagement() {
   // States cho tìm kiếm và lọc
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   
   // States cho phân trang
   const [currentPage, setCurrentPage] = useState(1);
@@ -184,14 +181,9 @@ export default function UserManagement() {
       result = result.filter(user => user.role === roleFilter);
     }
     
-    // Lọc theo trạng thái
-    if (statusFilter !== 'all') {
-      result = result.filter(user => user.active === (statusFilter === 'active'));
-    }
-    
     setFilteredUsers(result);
     setCurrentPage(1); // Reset về trang 1 khi thay đổi bộ lọc
-  }, [users, searchTerm, roleFilter, statusFilter]);
+  }, [users, searchTerm, roleFilter]);
 
   // Tính toán phân trang
   const indexOfLastUser = currentPage * usersPerPage;
@@ -215,17 +207,7 @@ export default function UserManagement() {
     }
   };
 
-  const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
-    try {
-      const response = await userAPI.updateUser(userId, { active: !currentStatus });
-      if (response.status === 'success') {
-        fetchUsers();
-      }
-    } catch (error) {
-      console.error('Error toggling user status:', error);
-      alert('Không thể thay đổi trạng thái người dùng');
-    }
-  };
+
 
   const handleResetPassword = async (userId: string) => {
     const user = users.find(u => u.id === userId);
@@ -338,7 +320,7 @@ export default function UserManagement() {
       {/* Search and Filter */}
       <div className="bg-white shadow-sm mt-6 rounded-lg mx-auto max-w-7xl">
         <div className="mx-auto px-4 py-5 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             {/* Search */}
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -367,22 +349,6 @@ export default function UserManagement() {
                 <option value="admin" className="text-gray-700">Admin</option>
                 <option value="trainer" className="text-gray-700">Huấn luyện viên</option>
                 <option value="member" className="text-gray-700">Thành viên</option>
-              </select>
-            </div>
-
-            {/* Status Filter */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiFilter className="h-5 w-5 text-gray-400" />
-              </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all duration-200"
-              >
-                <option value="all" className="text-gray-700">Tất cả trạng thái</option>
-                <option value="active" className="text-gray-700">Đang hoạt động</option>
-                <option value="inactive" className="text-gray-700">Đã khóa</option>
               </select>
             </div>
           </div>
@@ -518,27 +484,7 @@ export default function UserManagement() {
                               </>
                             )}
                             
-                            <button
-                              onClick={() => handleToggleStatus(user.id, user.active)}
-                              className={`inline-flex items-center px-2.5 py-1.5 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ${
-                                user.active
-                                  ? 'text-red-700 bg-red-50 hover:bg-red-100 focus:ring-red-500'
-                                  : 'text-green-700 bg-green-50 hover:bg-green-100 focus:ring-green-500'
-                              }`}
-                            >
-                              {user.active ? (
-                                <>
-                                  <FiLock className="w-4 h-4 mr-1" />
-                                  Khóa
-                                </>
-                              ) : (
-                                <>
-                                  <FiUnlock className="w-4 h-4 mr-1" />
-                                  Mở khóa
-                                </>
-                              )}
-                            </button>
-                            
+
                             <button
                               onClick={() => handleResetPassword(user.id)}
                               className="inline-flex items-center px-2.5 py-1.5 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-md hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-all duration-200"

@@ -6353,7 +6353,7 @@ export namespace Prisma {
     location: string | null
     lastMaintenance: Date | null
     nextMaintenance: Date | null
-    image: string | null
+    imageBase64: string | null
     notes: string | null
     createdById: string | null
     createdAt: Date | null
@@ -6374,7 +6374,7 @@ export namespace Prisma {
     location: string | null
     lastMaintenance: Date | null
     nextMaintenance: Date | null
-    image: string | null
+    imageBase64: string | null
     notes: string | null
     createdById: string | null
     createdAt: Date | null
@@ -6395,7 +6395,7 @@ export namespace Prisma {
     location: number
     lastMaintenance: number
     nextMaintenance: number
-    image: number
+    imageBase64: number
     notes: number
     createdById: number
     createdAt: number
@@ -6426,7 +6426,7 @@ export namespace Prisma {
     location?: true
     lastMaintenance?: true
     nextMaintenance?: true
-    image?: true
+    imageBase64?: true
     notes?: true
     createdById?: true
     createdAt?: true
@@ -6447,7 +6447,7 @@ export namespace Prisma {
     location?: true
     lastMaintenance?: true
     nextMaintenance?: true
-    image?: true
+    imageBase64?: true
     notes?: true
     createdById?: true
     createdAt?: true
@@ -6468,7 +6468,7 @@ export namespace Prisma {
     location?: true
     lastMaintenance?: true
     nextMaintenance?: true
-    image?: true
+    imageBase64?: true
     notes?: true
     createdById?: true
     createdAt?: true
@@ -6576,7 +6576,7 @@ export namespace Prisma {
     location: string | null
     lastMaintenance: Date | null
     nextMaintenance: Date | null
-    image: string | null
+    imageBase64: string | null
     notes: string | null
     createdById: string | null
     createdAt: Date
@@ -6616,7 +6616,7 @@ export namespace Prisma {
     location?: boolean
     lastMaintenance?: boolean
     nextMaintenance?: boolean
-    image?: boolean
+    imageBase64?: boolean
     notes?: boolean
     createdById?: boolean
     createdAt?: boolean
@@ -6642,14 +6642,14 @@ export namespace Prisma {
     location?: boolean
     lastMaintenance?: boolean
     nextMaintenance?: boolean
-    image?: boolean
+    imageBase64?: boolean
     notes?: boolean
     createdById?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type EquipmentOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "category" | "purchaseDate" | "purchasePrice" | "manufacturer" | "model" | "serialNumber" | "status" | "location" | "lastMaintenance" | "nextMaintenance" | "image" | "notes" | "createdById" | "createdAt" | "updatedAt", ExtArgs["result"]["equipment"]>
+  export type EquipmentOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "category" | "purchaseDate" | "purchasePrice" | "manufacturer" | "model" | "serialNumber" | "status" | "location" | "lastMaintenance" | "nextMaintenance" | "imageBase64" | "notes" | "createdById" | "createdAt" | "updatedAt", ExtArgs["result"]["equipment"]>
   export type EquipmentInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     maintenanceLogs?: boolean | Equipment$maintenanceLogsArgs<ExtArgs>
     createdBy?: boolean | Equipment$createdByArgs<ExtArgs>
@@ -6676,7 +6676,7 @@ export namespace Prisma {
       location: string | null
       lastMaintenance: Date | null
       nextMaintenance: Date | null
-      image: string | null
+      imageBase64: string | null
       notes: string | null
       createdById: string | null
       createdAt: Date
@@ -7088,7 +7088,7 @@ export namespace Prisma {
     readonly location: FieldRef<"Equipment", 'String'>
     readonly lastMaintenance: FieldRef<"Equipment", 'DateTime'>
     readonly nextMaintenance: FieldRef<"Equipment", 'DateTime'>
-    readonly image: FieldRef<"Equipment", 'String'>
+    readonly imageBase64: FieldRef<"Equipment", 'String'>
     readonly notes: FieldRef<"Equipment", 'String'>
     readonly createdById: FieldRef<"Equipment", 'String'>
     readonly createdAt: FieldRef<"Equipment", 'DateTime'>
@@ -8643,8 +8643,18 @@ export namespace Prisma {
 
   export type AggregateSubscriptionCancellationRequest = {
     _count: SubscriptionCancellationRequestCountAggregateOutputType | null
+    _avg: SubscriptionCancellationRequestAvgAggregateOutputType | null
+    _sum: SubscriptionCancellationRequestSumAggregateOutputType | null
     _min: SubscriptionCancellationRequestMinAggregateOutputType | null
     _max: SubscriptionCancellationRequestMaxAggregateOutputType | null
+  }
+
+  export type SubscriptionCancellationRequestAvgAggregateOutputType = {
+    refundAmount: number | null
+  }
+
+  export type SubscriptionCancellationRequestSumAggregateOutputType = {
+    refundAmount: number | null
   }
 
   export type SubscriptionCancellationRequestMinAggregateOutputType = {
@@ -8655,6 +8665,7 @@ export namespace Prisma {
     status: string | null
     reason: string | null
     adminNote: string | null
+    refundAmount: number | null
     processedById: string | null
     processedDate: Date | null
     createdAt: Date | null
@@ -8669,6 +8680,7 @@ export namespace Prisma {
     status: string | null
     reason: string | null
     adminNote: string | null
+    refundAmount: number | null
     processedById: string | null
     processedDate: Date | null
     createdAt: Date | null
@@ -8683,6 +8695,7 @@ export namespace Prisma {
     status: number
     reason: number
     adminNote: number
+    refundAmount: number
     processedById: number
     processedDate: number
     createdAt: number
@@ -8690,6 +8703,14 @@ export namespace Prisma {
     _all: number
   }
 
+
+  export type SubscriptionCancellationRequestAvgAggregateInputType = {
+    refundAmount?: true
+  }
+
+  export type SubscriptionCancellationRequestSumAggregateInputType = {
+    refundAmount?: true
+  }
 
   export type SubscriptionCancellationRequestMinAggregateInputType = {
     id?: true
@@ -8699,6 +8720,7 @@ export namespace Prisma {
     status?: true
     reason?: true
     adminNote?: true
+    refundAmount?: true
     processedById?: true
     processedDate?: true
     createdAt?: true
@@ -8713,6 +8735,7 @@ export namespace Prisma {
     status?: true
     reason?: true
     adminNote?: true
+    refundAmount?: true
     processedById?: true
     processedDate?: true
     createdAt?: true
@@ -8727,6 +8750,7 @@ export namespace Prisma {
     status?: true
     reason?: true
     adminNote?: true
+    refundAmount?: true
     processedById?: true
     processedDate?: true
     createdAt?: true
@@ -8772,6 +8796,18 @@ export namespace Prisma {
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
+     * Select which fields to average
+    **/
+    _avg?: SubscriptionCancellationRequestAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: SubscriptionCancellationRequestSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
      * Select which fields to find the minimum value
     **/
     _min?: SubscriptionCancellationRequestMinAggregateInputType
@@ -8802,6 +8838,8 @@ export namespace Prisma {
     take?: number
     skip?: number
     _count?: SubscriptionCancellationRequestCountAggregateInputType | true
+    _avg?: SubscriptionCancellationRequestAvgAggregateInputType
+    _sum?: SubscriptionCancellationRequestSumAggregateInputType
     _min?: SubscriptionCancellationRequestMinAggregateInputType
     _max?: SubscriptionCancellationRequestMaxAggregateInputType
   }
@@ -8814,11 +8852,14 @@ export namespace Prisma {
     status: string
     reason: string | null
     adminNote: string | null
+    refundAmount: number | null
     processedById: string | null
     processedDate: Date | null
     createdAt: Date
     updatedAt: Date
     _count: SubscriptionCancellationRequestCountAggregateOutputType | null
+    _avg: SubscriptionCancellationRequestAvgAggregateOutputType | null
+    _sum: SubscriptionCancellationRequestSumAggregateOutputType | null
     _min: SubscriptionCancellationRequestMinAggregateOutputType | null
     _max: SubscriptionCancellationRequestMaxAggregateOutputType | null
   }
@@ -8845,6 +8886,7 @@ export namespace Prisma {
     status?: boolean
     reason?: boolean
     adminNote?: boolean
+    refundAmount?: boolean
     processedById?: boolean
     processedDate?: boolean
     createdAt?: boolean
@@ -8864,13 +8906,14 @@ export namespace Prisma {
     status?: boolean
     reason?: boolean
     adminNote?: boolean
+    refundAmount?: boolean
     processedById?: boolean
     processedDate?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type SubscriptionCancellationRequestOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "subscriptionId" | "memberId" | "requestDate" | "status" | "reason" | "adminNote" | "processedById" | "processedDate" | "createdAt" | "updatedAt", ExtArgs["result"]["subscriptionCancellationRequest"]>
+  export type SubscriptionCancellationRequestOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "subscriptionId" | "memberId" | "requestDate" | "status" | "reason" | "adminNote" | "refundAmount" | "processedById" | "processedDate" | "createdAt" | "updatedAt", ExtArgs["result"]["subscriptionCancellationRequest"]>
   export type SubscriptionCancellationRequestInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     subscription?: boolean | SubscriptionDefaultArgs<ExtArgs>
     member?: boolean | UserDefaultArgs<ExtArgs>
@@ -8892,6 +8935,7 @@ export namespace Prisma {
       status: string
       reason: string | null
       adminNote: string | null
+      refundAmount: number | null
       processedById: string | null
       processedDate: Date | null
       createdAt: Date
@@ -9298,6 +9342,7 @@ export namespace Prisma {
     readonly status: FieldRef<"SubscriptionCancellationRequest", 'String'>
     readonly reason: FieldRef<"SubscriptionCancellationRequest", 'String'>
     readonly adminNote: FieldRef<"SubscriptionCancellationRequest", 'String'>
+    readonly refundAmount: FieldRef<"SubscriptionCancellationRequest", 'Float'>
     readonly processedById: FieldRef<"SubscriptionCancellationRequest", 'String'>
     readonly processedDate: FieldRef<"SubscriptionCancellationRequest", 'DateTime'>
     readonly createdAt: FieldRef<"SubscriptionCancellationRequest", 'DateTime'>
@@ -10877,7 +10922,7 @@ export namespace Prisma {
     location: 'location',
     lastMaintenance: 'lastMaintenance',
     nextMaintenance: 'nextMaintenance',
-    image: 'image',
+    imageBase64: 'imageBase64',
     notes: 'notes',
     createdById: 'createdById',
     createdAt: 'createdAt',
@@ -10913,6 +10958,7 @@ export namespace Prisma {
     status: 'status',
     reason: 'reason',
     adminNote: 'adminNote',
+    refundAmount: 'refundAmount',
     processedById: 'processedById',
     processedDate: 'processedDate',
     createdAt: 'createdAt',
@@ -11423,7 +11469,7 @@ export namespace Prisma {
     location?: StringNullableFilter<"Equipment"> | string | null
     lastMaintenance?: DateTimeNullableFilter<"Equipment"> | Date | string | null
     nextMaintenance?: DateTimeNullableFilter<"Equipment"> | Date | string | null
-    image?: StringNullableFilter<"Equipment"> | string | null
+    imageBase64?: StringNullableFilter<"Equipment"> | string | null
     notes?: StringNullableFilter<"Equipment"> | string | null
     createdById?: StringNullableFilter<"Equipment"> | string | null
     createdAt?: DateTimeFilter<"Equipment"> | Date | string
@@ -11446,7 +11492,7 @@ export namespace Prisma {
     location?: SortOrder
     lastMaintenance?: SortOrder
     nextMaintenance?: SortOrder
-    image?: SortOrder
+    imageBase64?: SortOrder
     notes?: SortOrder
     createdById?: SortOrder
     createdAt?: SortOrder
@@ -11472,7 +11518,7 @@ export namespace Prisma {
     location?: StringNullableFilter<"Equipment"> | string | null
     lastMaintenance?: DateTimeNullableFilter<"Equipment"> | Date | string | null
     nextMaintenance?: DateTimeNullableFilter<"Equipment"> | Date | string | null
-    image?: StringNullableFilter<"Equipment"> | string | null
+    imageBase64?: StringNullableFilter<"Equipment"> | string | null
     notes?: StringNullableFilter<"Equipment"> | string | null
     createdById?: StringNullableFilter<"Equipment"> | string | null
     createdAt?: DateTimeFilter<"Equipment"> | Date | string
@@ -11495,7 +11541,7 @@ export namespace Prisma {
     location?: SortOrder
     lastMaintenance?: SortOrder
     nextMaintenance?: SortOrder
-    image?: SortOrder
+    imageBase64?: SortOrder
     notes?: SortOrder
     createdById?: SortOrder
     createdAt?: SortOrder
@@ -11524,7 +11570,7 @@ export namespace Prisma {
     location?: StringNullableWithAggregatesFilter<"Equipment"> | string | null
     lastMaintenance?: DateTimeNullableWithAggregatesFilter<"Equipment"> | Date | string | null
     nextMaintenance?: DateTimeNullableWithAggregatesFilter<"Equipment"> | Date | string | null
-    image?: StringNullableWithAggregatesFilter<"Equipment"> | string | null
+    imageBase64?: StringNullableWithAggregatesFilter<"Equipment"> | string | null
     notes?: StringNullableWithAggregatesFilter<"Equipment"> | string | null
     createdById?: StringNullableWithAggregatesFilter<"Equipment"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Equipment"> | Date | string
@@ -11637,6 +11683,7 @@ export namespace Prisma {
     status?: StringFilter<"SubscriptionCancellationRequest"> | string
     reason?: StringNullableFilter<"SubscriptionCancellationRequest"> | string | null
     adminNote?: StringNullableFilter<"SubscriptionCancellationRequest"> | string | null
+    refundAmount?: FloatNullableFilter<"SubscriptionCancellationRequest"> | number | null
     processedById?: StringNullableFilter<"SubscriptionCancellationRequest"> | string | null
     processedDate?: DateTimeNullableFilter<"SubscriptionCancellationRequest"> | Date | string | null
     createdAt?: DateTimeFilter<"SubscriptionCancellationRequest"> | Date | string
@@ -11654,6 +11701,7 @@ export namespace Prisma {
     status?: SortOrder
     reason?: SortOrder
     adminNote?: SortOrder
+    refundAmount?: SortOrder
     processedById?: SortOrder
     processedDate?: SortOrder
     createdAt?: SortOrder
@@ -11674,6 +11722,7 @@ export namespace Prisma {
     status?: StringFilter<"SubscriptionCancellationRequest"> | string
     reason?: StringNullableFilter<"SubscriptionCancellationRequest"> | string | null
     adminNote?: StringNullableFilter<"SubscriptionCancellationRequest"> | string | null
+    refundAmount?: FloatNullableFilter<"SubscriptionCancellationRequest"> | number | null
     processedById?: StringNullableFilter<"SubscriptionCancellationRequest"> | string | null
     processedDate?: DateTimeNullableFilter<"SubscriptionCancellationRequest"> | Date | string | null
     createdAt?: DateTimeFilter<"SubscriptionCancellationRequest"> | Date | string
@@ -11691,13 +11740,16 @@ export namespace Prisma {
     status?: SortOrder
     reason?: SortOrder
     adminNote?: SortOrder
+    refundAmount?: SortOrder
     processedById?: SortOrder
     processedDate?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: SubscriptionCancellationRequestCountOrderByAggregateInput
+    _avg?: SubscriptionCancellationRequestAvgOrderByAggregateInput
     _max?: SubscriptionCancellationRequestMaxOrderByAggregateInput
     _min?: SubscriptionCancellationRequestMinOrderByAggregateInput
+    _sum?: SubscriptionCancellationRequestSumOrderByAggregateInput
   }
 
   export type SubscriptionCancellationRequestScalarWhereWithAggregatesInput = {
@@ -11711,6 +11763,7 @@ export namespace Prisma {
     status?: StringWithAggregatesFilter<"SubscriptionCancellationRequest"> | string
     reason?: StringNullableWithAggregatesFilter<"SubscriptionCancellationRequest"> | string | null
     adminNote?: StringNullableWithAggregatesFilter<"SubscriptionCancellationRequest"> | string | null
+    refundAmount?: FloatNullableWithAggregatesFilter<"SubscriptionCancellationRequest"> | number | null
     processedById?: StringNullableWithAggregatesFilter<"SubscriptionCancellationRequest"> | string | null
     processedDate?: DateTimeNullableWithAggregatesFilter<"SubscriptionCancellationRequest"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"SubscriptionCancellationRequest"> | Date | string
@@ -12233,7 +12286,7 @@ export namespace Prisma {
     location?: string | null
     lastMaintenance?: Date | string | null
     nextMaintenance?: Date | string | null
-    image?: string | null
+    imageBase64?: string | null
     notes?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -12255,7 +12308,7 @@ export namespace Prisma {
     location?: string | null
     lastMaintenance?: Date | string | null
     nextMaintenance?: Date | string | null
-    image?: string | null
+    imageBase64?: string | null
     notes?: string | null
     createdById?: string | null
     createdAt?: Date | string
@@ -12276,7 +12329,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     lastMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     nextMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    image?: NullableStringFieldUpdateOperationsInput | string | null
+    imageBase64?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -12297,7 +12350,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     lastMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     nextMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    image?: NullableStringFieldUpdateOperationsInput | string | null
+    imageBase64?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     createdById?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -12319,7 +12372,7 @@ export namespace Prisma {
     location?: string | null
     lastMaintenance?: Date | string | null
     nextMaintenance?: Date | string | null
-    image?: string | null
+    imageBase64?: string | null
     notes?: string | null
     createdById?: string | null
     createdAt?: Date | string
@@ -12339,7 +12392,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     lastMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     nextMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    image?: NullableStringFieldUpdateOperationsInput | string | null
+    imageBase64?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -12358,7 +12411,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     lastMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     nextMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    image?: NullableStringFieldUpdateOperationsInput | string | null
+    imageBase64?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     createdById?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -12470,6 +12523,7 @@ export namespace Prisma {
     status?: string
     reason?: string | null
     adminNote?: string | null
+    refundAmount?: number | null
     processedDate?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -12486,6 +12540,7 @@ export namespace Prisma {
     status?: string
     reason?: string | null
     adminNote?: string | null
+    refundAmount?: number | null
     processedById?: string | null
     processedDate?: Date | string | null
     createdAt?: Date | string
@@ -12497,6 +12552,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -12512,6 +12568,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedById?: NullableStringFieldUpdateOperationsInput | string | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -12526,6 +12583,7 @@ export namespace Prisma {
     status?: string
     reason?: string | null
     adminNote?: string | null
+    refundAmount?: number | null
     processedById?: string | null
     processedDate?: Date | string | null
     createdAt?: Date | string
@@ -12537,6 +12595,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -12549,6 +12608,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedById?: NullableStringFieldUpdateOperationsInput | string | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -13149,7 +13209,7 @@ export namespace Prisma {
     location?: SortOrder
     lastMaintenance?: SortOrder
     nextMaintenance?: SortOrder
-    image?: SortOrder
+    imageBase64?: SortOrder
     notes?: SortOrder
     createdById?: SortOrder
     createdAt?: SortOrder
@@ -13174,7 +13234,7 @@ export namespace Prisma {
     location?: SortOrder
     lastMaintenance?: SortOrder
     nextMaintenance?: SortOrder
-    image?: SortOrder
+    imageBase64?: SortOrder
     notes?: SortOrder
     createdById?: SortOrder
     createdAt?: SortOrder
@@ -13195,7 +13255,7 @@ export namespace Prisma {
     location?: SortOrder
     lastMaintenance?: SortOrder
     nextMaintenance?: SortOrder
-    image?: SortOrder
+    imageBase64?: SortOrder
     notes?: SortOrder
     createdById?: SortOrder
     createdAt?: SortOrder
@@ -13306,10 +13366,15 @@ export namespace Prisma {
     status?: SortOrder
     reason?: SortOrder
     adminNote?: SortOrder
+    refundAmount?: SortOrder
     processedById?: SortOrder
     processedDate?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+  }
+
+  export type SubscriptionCancellationRequestAvgOrderByAggregateInput = {
+    refundAmount?: SortOrder
   }
 
   export type SubscriptionCancellationRequestMaxOrderByAggregateInput = {
@@ -13320,6 +13385,7 @@ export namespace Prisma {
     status?: SortOrder
     reason?: SortOrder
     adminNote?: SortOrder
+    refundAmount?: SortOrder
     processedById?: SortOrder
     processedDate?: SortOrder
     createdAt?: SortOrder
@@ -13334,10 +13400,15 @@ export namespace Prisma {
     status?: SortOrder
     reason?: SortOrder
     adminNote?: SortOrder
+    refundAmount?: SortOrder
     processedById?: SortOrder
     processedDate?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+  }
+
+  export type SubscriptionCancellationRequestSumOrderByAggregateInput = {
+    refundAmount?: SortOrder
   }
 
   export type AppointmentCountOrderByAggregateInput = {
@@ -14592,7 +14663,7 @@ export namespace Prisma {
     location?: string | null
     lastMaintenance?: Date | string | null
     nextMaintenance?: Date | string | null
-    image?: string | null
+    imageBase64?: string | null
     notes?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -14613,7 +14684,7 @@ export namespace Prisma {
     location?: string | null
     lastMaintenance?: Date | string | null
     nextMaintenance?: Date | string | null
-    image?: string | null
+    imageBase64?: string | null
     notes?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -14672,6 +14743,7 @@ export namespace Prisma {
     status?: string
     reason?: string | null
     adminNote?: string | null
+    refundAmount?: number | null
     processedDate?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -14686,6 +14758,7 @@ export namespace Prisma {
     status?: string
     reason?: string | null
     adminNote?: string | null
+    refundAmount?: number | null
     processedById?: string | null
     processedDate?: Date | string | null
     createdAt?: Date | string
@@ -14707,6 +14780,7 @@ export namespace Prisma {
     status?: string
     reason?: string | null
     adminNote?: string | null
+    refundAmount?: number | null
     processedDate?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -14722,6 +14796,7 @@ export namespace Prisma {
     status?: string
     reason?: string | null
     adminNote?: string | null
+    refundAmount?: number | null
     processedDate?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -14937,7 +15012,7 @@ export namespace Prisma {
     location?: StringNullableFilter<"Equipment"> | string | null
     lastMaintenance?: DateTimeNullableFilter<"Equipment"> | Date | string | null
     nextMaintenance?: DateTimeNullableFilter<"Equipment"> | Date | string | null
-    image?: StringNullableFilter<"Equipment"> | string | null
+    imageBase64?: StringNullableFilter<"Equipment"> | string | null
     notes?: StringNullableFilter<"Equipment"> | string | null
     createdById?: StringNullableFilter<"Equipment"> | string | null
     createdAt?: DateTimeFilter<"Equipment"> | Date | string
@@ -15005,6 +15080,7 @@ export namespace Prisma {
     status?: StringFilter<"SubscriptionCancellationRequest"> | string
     reason?: StringNullableFilter<"SubscriptionCancellationRequest"> | string | null
     adminNote?: StringNullableFilter<"SubscriptionCancellationRequest"> | string | null
+    refundAmount?: FloatNullableFilter<"SubscriptionCancellationRequest"> | number | null
     processedById?: StringNullableFilter<"SubscriptionCancellationRequest"> | string | null
     processedDate?: DateTimeNullableFilter<"SubscriptionCancellationRequest"> | Date | string | null
     createdAt?: DateTimeFilter<"SubscriptionCancellationRequest"> | Date | string
@@ -15276,6 +15352,7 @@ export namespace Prisma {
     status?: string
     reason?: string | null
     adminNote?: string | null
+    refundAmount?: number | null
     processedDate?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -15290,6 +15367,7 @@ export namespace Prisma {
     status?: string
     reason?: string | null
     adminNote?: string | null
+    refundAmount?: number | null
     processedById?: string | null
     processedDate?: Date | string | null
     createdAt?: Date | string
@@ -15865,7 +15943,7 @@ export namespace Prisma {
     location?: string | null
     lastMaintenance?: Date | string | null
     nextMaintenance?: Date | string | null
-    image?: string | null
+    imageBase64?: string | null
     notes?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -15886,7 +15964,7 @@ export namespace Prisma {
     location?: string | null
     lastMaintenance?: Date | string | null
     nextMaintenance?: Date | string | null
-    image?: string | null
+    imageBase64?: string | null
     notes?: string | null
     createdById?: string | null
     createdAt?: Date | string
@@ -15975,7 +16053,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     lastMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     nextMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    image?: NullableStringFieldUpdateOperationsInput | string | null
+    imageBase64?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -15995,7 +16073,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     lastMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     nextMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    image?: NullableStringFieldUpdateOperationsInput | string | null
+    imageBase64?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     createdById?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -16647,7 +16725,7 @@ export namespace Prisma {
     location?: string | null
     lastMaintenance?: Date | string | null
     nextMaintenance?: Date | string | null
-    image?: string | null
+    imageBase64?: string | null
     notes?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -16674,6 +16752,7 @@ export namespace Prisma {
     status?: string
     reason?: string | null
     adminNote?: string | null
+    refundAmount?: number | null
     processedById?: string | null
     processedDate?: Date | string | null
     createdAt?: Date | string
@@ -16688,6 +16767,7 @@ export namespace Prisma {
     status?: string
     reason?: string | null
     adminNote?: string | null
+    refundAmount?: number | null
     processedDate?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -16880,7 +16960,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     lastMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     nextMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    image?: NullableStringFieldUpdateOperationsInput | string | null
+    imageBase64?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -16900,7 +16980,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     lastMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     nextMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    image?: NullableStringFieldUpdateOperationsInput | string | null
+    imageBase64?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -16920,7 +17000,7 @@ export namespace Prisma {
     location?: NullableStringFieldUpdateOperationsInput | string | null
     lastMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     nextMaintenance?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    image?: NullableStringFieldUpdateOperationsInput | string | null
+    imageBase64?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -16970,6 +17050,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -16983,6 +17064,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedById?: NullableStringFieldUpdateOperationsInput | string | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -16995,6 +17077,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedById?: NullableStringFieldUpdateOperationsInput | string | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17006,6 +17089,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17020,6 +17104,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17032,6 +17117,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17179,6 +17265,7 @@ export namespace Prisma {
     status?: string
     reason?: string | null
     adminNote?: string | null
+    refundAmount?: number | null
     processedById?: string | null
     processedDate?: Date | string | null
     createdAt?: Date | string
@@ -17190,6 +17277,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17203,6 +17291,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedById?: NullableStringFieldUpdateOperationsInput | string | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17215,6 +17304,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     reason?: NullableStringFieldUpdateOperationsInput | string | null
     adminNote?: NullableStringFieldUpdateOperationsInput | string | null
+    refundAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     processedById?: NullableStringFieldUpdateOperationsInput | string | null
     processedDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string

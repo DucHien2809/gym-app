@@ -15,7 +15,8 @@ exports.getAllCancellationRequests = async (req, res) => {
             id: true,
             name: true,
             email: true,
-            phone: true
+            phone: true,
+            profileImage: true
           }
         },
         processedBy: {
@@ -143,7 +144,8 @@ exports.requestCancellation = async (req, res) => {
           select: {
             id: true,
             name: true,
-            email: true
+            email: true,
+            profileImage: true
           }
         }
       }
@@ -167,7 +169,7 @@ exports.requestCancellation = async (req, res) => {
 exports.processCancellationRequest = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, adminNote } = req.body;
+    const { status, adminNote, refundAmount } = req.body;
     
     if (status !== 'approved' && status !== 'rejected') {
       return res.status(400).json({
@@ -198,12 +200,29 @@ exports.processCancellationRequest = async (req, res) => {
       });
     }
 
+    // Validate refund amount nếu status là approved
+    if (status === 'approved' && refundAmount !== undefined) {
+      if (refundAmount < 0) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Số tiền hoàn trả không thể âm',
+        });
+      }
+      if (refundAmount > request.subscription.paymentAmount) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Số tiền hoàn trả không thể lớn hơn số tiền đã thanh toán',
+        });
+      }
+    }
+
     // Cập nhật trạng thái của yêu cầu
     const updatedRequest = await prisma.subscriptionCancellationRequest.update({
       where: { id },
       data: {
         status,
         adminNote: adminNote || null,
+        refundAmount: status === 'approved' ? (refundAmount || 0) : null,
         processedById: req.user.id,
         processedDate: new Date()
       },
@@ -217,7 +236,8 @@ exports.processCancellationRequest = async (req, res) => {
           select: {
             id: true,
             name: true,
-            email: true
+            email: true,
+            profileImage: true
           }
         },
         processedBy: {
@@ -229,10 +249,15 @@ exports.processCancellationRequest = async (req, res) => {
       }
     });
 
-    // Nếu chấp nhận yêu cầu, thực hiện hủy đăng ký
+    // Nếu chấp nhận yêu cầu, đánh dấu subscription là đã hủy (không xóa)
     if (status === 'approved') {
-      await prisma.subscription.delete({
-        where: { id: request.subscriptionId }
+      await prisma.subscription.update({
+        where: { id: request.subscriptionId },
+        data: {
+          active: false,
+          paymentStatus: 'cancelled', // Đánh dấu là đã hủy
+          notes: `Đã hủy vào ${new Date().toLocaleString('vi-VN')}. Hoàn tiền: ${refundAmount || 0} VND. ${updatedRequest.adminNote ? `Ghi chú: ${updatedRequest.adminNote}` : ''}`
+        }
       });
     }
 

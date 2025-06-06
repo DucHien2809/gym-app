@@ -114,7 +114,7 @@ model Equipment {
   location      String?         // e.g., "Main floor", "Weight room", etc.
   lastMaintenance DateTime?
   nextMaintenance DateTime?
-  image         String?         @default("default-equipment.jpg")
+  imageBase64   String?         // Base64 encoded image data
   notes         String?
   createdById   String?         @db.ObjectId
   createdAt     DateTime        @default(now())
@@ -153,13 +153,14 @@ model SubscriptionCancellationRequest {
   status        String     @default("pending") // pending, approved, rejected
   reason        String?
   adminNote     String?
+  refundAmount  Float?
   processedById String?    @db.ObjectId
   processedDate DateTime?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   
-  // Relations
-  subscription  Subscription @relation("SubscriptionCancellationRequests", fields: [subscriptionId], references: [id], onDelete: Cascade)
+  // Relations  
+  subscription  Subscription @relation("SubscriptionCancellationRequests", fields: [subscriptionId], references: [id])
   member        User         @relation("MemberCancellationRequests", fields: [memberId], references: [id])
   processedBy   User?        @relation("ProcessedCancellationRequests", fields: [processedById], references: [id])
 }

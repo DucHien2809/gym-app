@@ -13,7 +13,6 @@ import {
   FiClock,
   FiUser,
   FiCalendar,
-  FiCamera,
   FiRefreshCw,
   FiLogIn,
   FiLogOut,
@@ -31,6 +30,8 @@ interface Member {
   isCheckedIn: boolean;
   lastCheckIn?: string;
   activeAttendanceId?: string;
+  hasActiveSubscription?: boolean;
+  subscription?: any;
 }
 
 interface CheckInRecord {
@@ -52,7 +53,6 @@ export default function CheckInPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showQRScanner, setShowQRScanner] = useState(false);
 
   useEffect(() => {
     if (!auth.isAuthenticated) {
@@ -118,8 +118,27 @@ export default function CheckInPage() {
             : [];
         }
 
+        // Tạo map để lookup subscription theo memberId (tương tự admin)
+        const subscriptionMap = new Map();
+        const currentDate = new Date();
+        
+        allSubscriptions.forEach((sub: any) => {
+          // Subscription phải: active = true, chưa hết hạn, và đã thanh toán
+          const isPaid = sub.paymentStatus === 'paid' || sub.paymentStatus === 'completed';
+          if (sub.active === true && 
+              new Date(sub.endDate) > currentDate && 
+              isPaid) {
+            subscriptionMap.set(sub.memberId, sub);
+          }
+        });
+
+        // Chỉ lấy những thành viên có subscription active
+        const membersWithSubscription = activeMembers.filter((user: any) => {
+          return subscriptionMap.has(user.id);
+        });
+
         // Map members with their check-in status and membership type
-        const membersWithStatus = activeMembers.map((user: any) => {
+        const membersWithStatus = membersWithSubscription.map((user: any) => {
           // Find active attendance (checked in but not checked out)
           const activeAttendance = todayAttendances.find((attendance: any) => 
             attendance.memberId === user.id && !attendance.checkOutTime
@@ -133,15 +152,8 @@ export default function CheckInPage() {
             new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime()
           )[0];
 
-          // Find active subscription to get membership type
-          const currentDate = new Date();
-          const activeSubscription = allSubscriptions.find((sub: any) => 
-            sub.memberId === user.id && 
-            sub.active && 
-            sub.paymentStatus === 'completed' &&
-            new Date(sub.startDate) <= currentDate &&
-            new Date(sub.endDate) >= currentDate
-          );
+          // Get subscription info
+          const activeSubscription = subscriptionMap.get(user.id);
 
           let membershipType = 'Chưa có gói tập';
           if (activeSubscription && activeSubscription.membership) {
@@ -160,7 +172,9 @@ export default function CheckInPage() {
             profileImage: user.profileImage,
             isCheckedIn: !!activeAttendance,
             lastCheckIn: latestAttendance?.checkInTime,
-            activeAttendanceId: activeAttendance?.id
+            activeAttendanceId: activeAttendance?.id,
+            hasActiveSubscription: true,
+            subscription: activeSubscription
           };
         });
 
@@ -288,13 +302,6 @@ export default function CheckInPage() {
             </div>
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => setShowQRScanner(!showQRScanner)}
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
-              >
-                <FiCamera className="mr-2 h-4 w-4" />
-                QR Scanner
-              </button>
-              <button
                 onClick={fetchData}
                 disabled={loading}
                 className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 disabled:opacity-50"
@@ -341,8 +348,8 @@ export default function CheckInPage() {
                     <FiUserCheck className="text-green-600 h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500" style={{ color: '#6b7280' }}>Đang tập</p>
-                    <p className="text-xl font-semibold" style={{ color: '#1f2937' }}>{checkedInMembers.length}</p>
+                                    <p className="text-sm text-gray-500">Đang tập</p>
+                <p className="text-xl font-semibold text-gray-900">{checkedInMembers.length}</p>
                   </div>
                 </div>
               </motion.div>
@@ -358,8 +365,8 @@ export default function CheckInPage() {
                     <FiCalendar className="text-blue-600 h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500" style={{ color: '#6b7280' }}>Check-in hôm nay</p>
-                    <p className="text-xl font-semibold" style={{ color: '#1f2937' }}>{todayCheckIns.length}</p>
+                                    <p className="text-sm text-gray-500">Check-in hôm nay</p>
+                <p className="text-xl font-semibold text-gray-900">{todayCheckIns.length}</p>
                   </div>
                 </div>
               </motion.div>
@@ -375,8 +382,8 @@ export default function CheckInPage() {
                     <FiUsers className="text-purple-600 h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500" style={{ color: '#6b7280' }}>Tổng thành viên</p>
-                    <p className="text-xl font-semibold" style={{ color: '#1f2937' }}>{members.length}</p>
+                    <p className="text-sm text-gray-500">Thành viên có gói active</p>
+                    <p className="text-xl font-semibold text-gray-900">{members.length}</p>
                   </div>
                 </div>
               </motion.div>
@@ -425,15 +432,20 @@ export default function CheckInPage() {
                               </div>
                             </div>
                             <div className="ml-4">
-                              <p className="text-sm font-medium text-gray-900" style={{ color: '#1f2937' }}>
+                              <p className="text-sm font-medium text-gray-900">
                                 {member.name}
                               </p>
-                              <p className="text-xs text-gray-500" style={{ color: '#6b7280' }}>
+                              <p className="text-xs text-gray-500">
                                 {member.email}
                               </p>
-                              <p className="text-xs text-gray-500" style={{ color: '#6b7280' }}>
+                              <p className="text-xs text-gray-500">
                                 {member.membershipType} • {member.phone || 'Chưa có SĐT'}
                               </p>
+                              {member.subscription && (
+                                <p className="text-xs text-green-600">
+                                  Hết hạn: {new Date(member.subscription.endDate).toLocaleDateString('vi-VN')}
+                                </p>
+                              )}
                             </div>
                           </div>
                           
@@ -471,11 +483,14 @@ export default function CheckInPage() {
                   ) : (
                     <div className="text-center py-8">
                       <FiUsers className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900" style={{ color: '#1f2937' }}>
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">
                         Không tìm thấy thành viên
                       </h3>
-                      <p className="mt-1 text-sm text-gray-500" style={{ color: '#6b7280' }}>
-                        Hãy thử với từ khóa khác
+                      <p className="mt-1 text-sm text-gray-500">
+                        Hãy thử với từ khóa khác hoặc kiểm tra lại gói tập của thành viên
+                      </p>
+                      <p className="mt-1 text-xs text-gray-400">
+                        Chỉ hiển thị thành viên có gói tập active và đã thanh toán
                       </p>
                     </div>
                   )}
@@ -502,14 +517,14 @@ export default function CheckInPage() {
                           className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
                         >
                           <div>
-                            <p className="text-sm font-medium text-gray-900" style={{ color: '#1f2937' }}>
+                            <p className="text-sm font-medium text-gray-900">
                               {record.memberName}
                             </p>
-                            <p className="text-xs text-gray-500" style={{ color: '#6b7280' }}>
+                            <p className="text-xs text-gray-500">
                               Vào: {formatTime(record.checkInTime)}
                             </p>
                             {record.checkOutTime && (
-                              <p className="text-xs text-gray-500" style={{ color: '#6b7280' }}>
+                              <p className="text-xs text-gray-500">
                                 Ra: {formatTime(record.checkOutTime)}
                               </p>
                             )}
@@ -527,10 +542,10 @@ export default function CheckInPage() {
                   ) : (
                     <div className="text-center py-8">
                       <FiClock className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900" style={{ color: '#1f2937' }}>
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">
                         Chưa có check-in nào hôm nay
                       </h3>
-                      <p className="mt-1 text-sm text-gray-500" style={{ color: '#6b7280' }}>
+                      <p className="mt-1 text-sm text-gray-500">
                         Các lượt check-in hôm nay sẽ hiển thị ở đây
                       </p>
                     </div>

@@ -17,6 +17,7 @@ export default function TrainerDashboardLayout({
   const navigation = [
     { name: 'Bảng điều khiển', href: '/dashboard/trainer', current: pathname === '/dashboard/trainer' },
     { name: 'Lịch hẹn', href: '/dashboard/trainer/appointments', current: pathname === '/dashboard/trainer/appointments' },
+    { name: 'Điểm danh', href: '/dashboard/trainer/check-in', current: pathname === '/dashboard/trainer/check-in' },
     { name: 'Hồ sơ', href: '/dashboard/trainer/profile', current: pathname === '/dashboard/trainer/profile' },
     // Add more navigation items as needed
   ];

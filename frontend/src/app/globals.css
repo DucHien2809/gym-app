@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import "../styles/fonts.css";
 
 :root {
   --background: #ffffff;
@@ -21,8 +21,8 @@
 :root {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: 'Poppins', sans-serif;
-  --font-mono: monospace;
+  --font-sans: var(--font-poppins), 'Poppins', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
 }
 
 /* Commented out auto dark mode to prevent white text issues
@@ -40,7 +40,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* Force text visibility for common elements */
@@ -80,6 +80,9 @@ h1, h2, h3, h4, h5, h6, p, span, div, label, button, input, textarea, select {
 /* Add smooth scrolling */
 html {
   scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Custom scrollbar */

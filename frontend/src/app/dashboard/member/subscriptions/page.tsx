@@ -51,12 +51,12 @@ export default function MemberSubscriptions() {
   const [membershipLoading, setMembershipLoading] = useState(false);
   const [membershipError, setMembershipError] = useState<string | null>(null);
   const [showMembershipsModal, setShowMembershipsModal] = useState(false);
-  const [subscribeLoading, setSubscribeLoading] = useState(false);
+  const [subscribeLoading, setSubscribeLoading] = useState<string | null>(null);
   const [subscribeSuccess, setSubscribeSuccess] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
   // Add new states for tracking data source
-  const [membershipDataSource, setMembershipDataSource] = useState<'api' | 'localStorage' | 'mock'>('mock');
+  const [, setMembershipDataSource] = useState<'api' | 'localStorage' | 'mock'>('mock');
 
   // Add new states for cancellation
   const [cancellationRequests, setCancellationRequests] = useState<CancellationRequest[]>([]);
@@ -236,7 +236,7 @@ export default function MemberSubscriptions() {
         try {
           const response = await cancellationAPI.getMemberCancellationRequests(auth.user.id);
           if (response.status === 'success' && response.data?.cancellationRequests) {
-            setCancellationRequests(response.data.cancellationRequests as CancellationRequest[]);
+            setCancellationRequests(response.data.cancellationRequests as unknown as CancellationRequest[]);
           }
         } catch (error) {
           console.error('Error fetching cancellation requests:', error);
@@ -292,21 +292,21 @@ export default function MemberSubscriptions() {
       } else {
         // Nếu API không có dữ liệu, sử dụng mock data
         console.log('API returned no memberships, using mock data');
-        useMockMembershipData();
+        setMockMembershipData();
       }
     } catch (error) {
       console.error('Error fetching available memberships:', error);
       setMembershipError('Không thể tải danh sách gói tập từ cơ sở dữ liệu. Vui lòng thử lại sau.');
       
       // Nếu API gặp lỗi, sử dụng mock data
-      useMockMembershipData();
+      setMockMembershipData();
     } finally {
       setMembershipLoading(false);
     }
   };
   
   // Helper function to set mock data
-  const useMockMembershipData = () => {
+  const setMockMembershipData = () => {
     console.log('Using mock membership data');
     const mockMemberships = [
       {
@@ -370,7 +370,7 @@ export default function MemberSubscriptions() {
     }
     
     try {
-      setSubscribeLoading(true);
+      setSubscribeLoading(membershipId);
       setSubscribeError(null);
       
       console.log('Subscribing to membership ID:', membershipId);
@@ -449,7 +449,7 @@ export default function MemberSubscriptions() {
       const errorMsg = (error as Error).message || 'Đăng ký gói tập thất bại. Vui lòng thử lại sau.';
       setSubscribeError(errorMsg);
     } finally {
-      setSubscribeLoading(false);
+      setSubscribeLoading(null);
     }
   };
 
@@ -464,17 +464,17 @@ export default function MemberSubscriptions() {
 
   const formatStatus = (subscription: Subscription) => {
     if (!subscription.active) {
-      return 'Đã hết hạn';
+      return 'Expired';
     }
     
     if (subscription.paymentStatus === 'pending') {
-      return 'Chờ thanh toán';
+      return 'Payment Pending';
     }
     
     const daysRemaining = getDaysRemaining(subscription.endDate);
     
     if (daysRemaining <= 0) {
-      return 'Hết hạn hôm nay';
+      return 'Expired Today';
     }
     
     if (daysRemaining <= 7) {
@@ -497,6 +497,23 @@ export default function MemberSubscriptions() {
         return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'Active':
+        return 'Đang hoạt động';
+      case 'Expiring Soon':
+        return 'Sắp hết hạn';
+      case 'Expired':
+        return 'Đã hết hạn';
+      case 'Expired Today':
+        return 'Hết hạn hôm nay';
+      case 'Payment Pending':
+        return 'Chờ thanh toán';
+      default:
+        return status;
     }
   };
 
@@ -557,7 +574,7 @@ export default function MemberSubscriptions() {
         setCancelSuccess(true);
         
         // Add to cancellation requests list
-        const newRequest = response.data.cancellationRequest as CancellationRequest;
+        const newRequest = response.data.cancellationRequest as unknown as CancellationRequest;
         setCancellationRequests(prev => [newRequest, ...prev]);
         
         // Update the subscription to show it has a pending cancellation request
@@ -841,13 +858,15 @@ export default function MemberSubscriptions() {
                           
                           <div className="flex items-center gap-3">
                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor}`}>
-                              {status}
+                              {getStatusText(status)}
                             </span>
                             <span className={`text-sm font-medium ${
                               subscription.paymentStatus === 'completed' ? 'text-green-600' : 
                               subscription.paymentStatus === 'pending' ? 'text-orange-600' : 'text-red-600'
                             }`}>
-                              {subscription.paymentStatus.charAt(0).toUpperCase() + subscription.paymentStatus.slice(1)}
+                              {subscription.paymentStatus === 'completed' ? 'Đã thanh toán' :
+                               subscription.paymentStatus === 'pending' ? 'Chờ thanh toán' : 
+                               subscription.paymentStatus === 'failed' ? 'Thanh toán thất bại' : 'Đã hoàn tiền'}
                             </span>
                           </div>
                         </div>
@@ -943,7 +962,7 @@ export default function MemberSubscriptions() {
                             <div className="flex items-center">
                               <FiAlertCircle className="h-5 w-5 text-orange-500 mr-2" />
                               <p className="text-sm text-orange-700">
-                                Your payment is pending. Please complete the payment to activate your subscription.
+                                Thanh toán của bạn đang chờ xử lý. Vui lòng hoàn tất thanh toán để kích hoạt gói đăng ký.
                               </p>
                             </div>
                           </div>
@@ -968,8 +987,8 @@ export default function MemberSubscriptions() {
                   <button
                     type="button"
                     className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                    onClick={() => !subscribeLoading && setShowMembershipsModal(false)}
-                    disabled={subscribeLoading}
+                    onClick={() => subscribeLoading === null && setShowMembershipsModal(false)}
+                    disabled={subscribeLoading !== null}
                   >
                     <span className="sr-only">Close</span>
                     <FiX className="h-6 w-6" />
@@ -1067,16 +1086,16 @@ export default function MemberSubscriptions() {
                               
                               <button
                                 onClick={() => handleSubscribe(membership.id)}
-                                disabled={subscribeLoading}
+                                disabled={subscribeLoading !== null}
                                 className={`w-full inline-flex justify-center items-center px-4 py-2 ${
                                   membership.name === 'Basic' || membership.name === 'Cơ bản'
                                     ? 'bg-blue-600 hover:bg-blue-700' 
                                     : membership.name === 'Standard' || membership.name === 'Tiêu chuẩn'
                                     ? 'bg-indigo-600 hover:bg-indigo-700'
                                     : 'bg-purple-600 hover:bg-purple-700'
-                                } text-white rounded-lg transition-colors duration-200`}
+                                } text-white rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
                               >
-                                {subscribeLoading ? (
+                                {subscribeLoading === membership.id ? (
                                   <>
                                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -1108,8 +1127,8 @@ export default function MemberSubscriptions() {
                   <button
                     type="button"
                     className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:text-sm"
-                    onClick={() => !subscribeLoading && setShowMembershipsModal(false)}
-                    disabled={subscribeLoading}
+                    onClick={() => subscribeLoading === null && setShowMembershipsModal(false)}
+                    disabled={subscribeLoading !== null}
                   >
                     Đóng
                   </button>

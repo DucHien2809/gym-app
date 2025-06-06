@@ -8,8 +8,8 @@ const prisma = new PrismaClient();
  */
 exports.createMaintenanceLog = async (req, res) => {
   try {
+    const { equipmentId } = req.params; // Get equipmentId from URL params
     const {
-      equipmentId,
       maintenanceDate,
       maintenanceType,
       description,
@@ -19,11 +19,31 @@ exports.createMaintenanceLog = async (req, res) => {
       status
     } = req.body;
 
+    // Debug logging
+    console.log('Maintenance Log Creation Request:');
+    console.log('Equipment ID from params:', equipmentId);
+    console.log('Request body:', req.body);
+    console.log('User ID:', req.user?.id);
+
     // Validate required fields
-    if (!equipmentId || !maintenanceType || !description) {
+    if (!equipmentId) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields'
+        message: 'Equipment ID is required'
+      });
+    }
+
+    if (!maintenanceType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Maintenance type is required'
+      });
+    }
+
+    if (!description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Description is required'
       });
     }
 
@@ -45,10 +65,10 @@ exports.createMaintenanceLog = async (req, res) => {
         equipmentId,
         maintenanceDate: maintenanceDate ? new Date(maintenanceDate) : new Date(),
         maintenanceType,
-        description,
+        description: description.trim(),
         cost: cost ? parseFloat(cost) : null,
-        technician,
-        parts,
+        technician: technician ? technician.trim() : null,
+        parts: parts ? parts.trim() : null,
         status: status || 'completed',
         createdById: req.user.id
       }

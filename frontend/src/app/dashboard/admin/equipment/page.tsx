@@ -6,6 +6,29 @@ import { equipmentAPI } from '@/services/api';
 import { Equipment } from '@/types';
 import { FiEdit, FiTrash2, FiPlus, FiSearch, FiInfo } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
+import { base64ToImageUrl } from '@/utils/imageUtils';
+
+// Component hiển thị hình ảnh thiết bị
+const EquipmentImage = ({ equipment }: { equipment: Equipment }) => {
+  const [imgError, setImgError] = useState(false);
+  
+  if (!equipment.imageBase64 || imgError) {
+    return (
+      <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center text-gray-500 text-xs">
+        No Image
+      </div>
+    );
+  }
+  
+  return (
+    <img
+      src={base64ToImageUrl(equipment.imageBase64)}
+      alt={equipment.name}
+      className="w-16 h-16 object-cover rounded-lg"
+      onError={() => setImgError(true)}
+    />
+  );
+};
 
 export default function EquipmentPage() {
   const router = useRouter();
@@ -205,6 +228,9 @@ export default function EquipmentPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Hình ảnh
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tên
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -225,8 +251,11 @@ export default function EquipmentPage() {
                 {equipment.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <EquipmentImage equipment={item} />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="ml-4">
+                        <div>
                           <div className="text-sm font-medium text-gray-900">{item.name}</div>
                           <div className="text-sm text-gray-500">{item.manufacturer}</div>
                         </div>

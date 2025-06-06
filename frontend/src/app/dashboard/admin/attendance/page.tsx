@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { attendanceAPI, userAPI } from '@/services/api';
-import { FiSearch, FiFilter, FiEdit, FiTrash2, FiArrowLeft, FiCheck, FiX, FiClock, FiUser, FiCalendar, FiActivity } from 'react-icons/fi';
+import { attendanceAPI, userAPI, subscriptionAPI } from '@/services/api';
+import { FiSearch, FiFilter, FiEdit, FiTrash2, FiArrowLeft, FiCheck, FiX, FiClock, FiUser, FiCalendar, FiActivity, FiInfo } from 'react-icons/fi';
 
 // UserAvatar component to display real profile images with fallback
 interface UserAvatarProps {
@@ -133,6 +133,15 @@ interface Member {
   role: string;
   active: boolean;
   profileImage?: string;
+  hasActiveSubscription?: boolean;
+  subscription?: {
+    id: string;
+    status: string;
+    endDate: string;
+    membership: {
+      name: string;
+    };
+  };
 }
 
 interface User {
@@ -210,20 +219,84 @@ export default function AttendanceManagement() {
   const fetchMembers = async () => {
     try {
       setMembersLoading(true);
-      console.log('Fetching members from API...');
+      console.log('Fetching members and subscriptions from API...');
       
-      const response = await userAPI.getAllUsers();
+      // Lấy tất cả users và subscriptions
+      const [usersResponse, subscriptionsResponse] = await Promise.all([
+        userAPI.getAllUsers(),
+        subscriptionAPI.getAllSubscriptions()
+      ]);
       
-      if (response.status === 'success' && response.data?.users) {
-        // Chỉ lấy những user có role là 'member' và đang active
-        const usersData = Array.isArray(response.data.users) 
-          ? response.data.users 
+      if (usersResponse.status === 'success' && usersResponse.data?.users) {
+        const usersData = Array.isArray(usersResponse.data.users) 
+          ? usersResponse.data.users 
           : [];
-        const membersData = usersData.filter((user: User) => 
-          user.role === 'member' && user.active
-        );
-        console.log('Loaded members from API:', membersData.length);
-        setMembers(membersData);
+        
+        // Lấy danh sách subscriptions active
+        let subscriptions: any[] = [];
+        if (subscriptionsResponse.status === 'success' && subscriptionsResponse.data?.subscriptions) {
+          subscriptions = Array.isArray(subscriptionsResponse.data.subscriptions) 
+            ? subscriptionsResponse.data.subscriptions 
+            : [];
+        }
+        
+        console.log('All subscriptions:', subscriptions);
+        console.log('All users:', usersData);
+        
+        // Tạo map để lookup subscription theo memberId
+        const subscriptionMap = new Map();
+        const currentDate = new Date();
+        console.log('Current date:', currentDate);
+        
+        subscriptions.forEach((sub: any) => {
+          console.log('Processing subscription:', {
+            id: sub.id,
+            memberId: sub.memberId,
+            active: sub.active,
+            paymentStatus: sub.paymentStatus,
+            endDate: sub.endDate,
+            endDateParsed: new Date(sub.endDate),
+            isEndDateValid: new Date(sub.endDate) > currentDate,
+            isActive: sub.active === true,
+            isPaid: sub.paymentStatus === 'paid'
+          });
+          
+          // Subscription phải: active = true, chưa hết hạn, và đã thanh toán
+          const isPaid = sub.paymentStatus === 'paid' || sub.paymentStatus === 'completed';
+          if (sub.active === true && 
+              new Date(sub.endDate) > currentDate && 
+              isPaid) {
+            console.log('Adding subscription to map for member:', sub.memberId);
+            subscriptionMap.set(sub.memberId, sub);
+          } else {
+                         console.log('Subscription not eligible:', {
+               reason: {
+                 notActive: sub.active !== true,
+                 expired: new Date(sub.endDate) <= currentDate,
+                 notPaid: !isPaid
+               }
+             });
+          }
+        });
+        
+        console.log('Subscription map:', subscriptionMap);
+        
+        // Chỉ lấy những user có role là 'member', đang active VÀ có subscription active
+        const allMembers = usersData.filter((user: User) => user.role === 'member' && user.active);
+        console.log('All active members:', allMembers);
+        
+        const membersWithSubscription = allMembers.filter((user: User) => {
+          const hasSubscription = subscriptionMap.has(user.id);
+          console.log(`Member ${user.name} (${user.id}) has subscription:`, hasSubscription);
+          return hasSubscription;
+        }).map((user: User) => ({
+          ...user,
+          hasActiveSubscription: true,
+          subscription: subscriptionMap.get(user.id)
+        }));
+        
+        console.log('Final members with active subscriptions:', membersWithSubscription);
+        setMembers(membersWithSubscription);
       } else {
         setMembers([]);
         console.log('No members found from API');
@@ -746,6 +819,8 @@ export default function AttendanceManagement() {
               </div>
             </div>
 
+
+
             {/* Danh sách thành viên có thể điểm danh nhanh */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-4">
@@ -768,6 +843,9 @@ export default function AttendanceManagement() {
                           Thành viên
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                          Gói tập
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                           Trạng thái
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -781,8 +859,8 @@ export default function AttendanceManagement() {
                     <tbody className="divide-y divide-gray-200 bg-white">
                       {members.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
-                            Không có thành viên nào
+                          <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                            Không có thành viên có subscription active
                           </td>
                         </tr>
                       ) : (
@@ -802,6 +880,17 @@ export default function AttendanceManagement() {
                                     <div className="text-sm font-medium text-gray-900">{member.name}</div>
                                     <div className="text-sm text-gray-500">{member.email}</div>
                                   </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {member.subscription?.membership?.name || 'N/A'}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  Hết hạn: {member.subscription?.endDate 
+                                    ? new Date(member.subscription.endDate).toLocaleDateString('vi-VN') 
+                                    : 'N/A'
+                                  }
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
@@ -1065,6 +1154,22 @@ export default function AttendanceManagement() {
                           {formData.memberPhone && (
                             <p className="text-sm text-gray-700"><strong>Điện thoại:</strong> {formData.memberPhone}</p>
                           )}
+                          {(() => {
+                            const member = members.find(m => m.id === formData.memberId);
+                            if (member?.subscription) {
+                              return (
+                                <div className="mt-1 p-2 bg-green-50 rounded border border-green-200">
+                                  <p className="text-sm text-green-700">
+                                    <strong>Gói tập:</strong> {member.subscription.membership?.name || 'N/A'}
+                                  </p>
+                                  <p className="text-sm text-green-700">
+                                    <strong>Hết hạn:</strong> {new Date(member.subscription.endDate).toLocaleDateString('vi-VN')}
+                                  </p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       )}
                     </div>

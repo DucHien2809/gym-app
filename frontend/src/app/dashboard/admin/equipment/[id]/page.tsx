@@ -81,9 +81,14 @@ export default function EquipmentDetailsPage({ params }: Props) {
 
     try {
       // Validate form
-      if (!maintenanceFormData.maintenanceType || !maintenanceFormData.description) {
-        throw new Error('Vui lòng điền tất cả các trường bắt buộc');
+      if (!maintenanceFormData.maintenanceType || !maintenanceFormData.description.trim()) {
+        throw new Error('Vui lòng điền tất cả các trường bắt buộc (Loại bảo trì và Mô tả)');
       }
+
+      // Debug logging
+      console.log('Submitting maintenance log:');
+      console.log('Equipment ID:', id);
+      console.log('Form data:', maintenanceFormData);
 
       // Submit form
       await equipmentAPI.createMaintenanceLog(id, {
@@ -112,7 +117,10 @@ export default function EquipmentDetailsPage({ params }: Props) {
       });
       setShowAddMaintenanceModal(false);
     } catch (err: any) {
-      setError(err.message || 'Không thể thêm nhật ký bảo trì');
+      console.error('Error creating maintenance log:', err);
+      // Handle API error response
+      const errorMessage = err.response?.data?.message || err.message || 'Không thể thêm nhật ký bảo trì';
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }

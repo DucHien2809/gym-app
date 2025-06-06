@@ -194,11 +194,24 @@ export default function MemberAppointments() {
       return;
     }
     
+    // Tạo thời gian mặc định là hiện tại + 1 tiếng (múi giờ địa phương)
+    const now = new Date();
+    const defaultTime = new Date(now.getTime() + 60 * 60 * 1000); // Thêm 1 tiếng
+    
+    // Chuyển đổi sang thời gian địa phương cho datetime-local input
+    const year = defaultTime.getFullYear();
+    const month = String(defaultTime.getMonth() + 1).padStart(2, '0');
+    const day = String(defaultTime.getDate()).padStart(2, '0');
+    const hours = String(defaultTime.getHours()).padStart(2, '0');
+    const minutes = String(defaultTime.getMinutes()).padStart(2, '0');
+    
+    const defaultDateTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+    
     setFormData({
       trainerId: trainers.length > 0 ? trainers[0].id : '',
       title: '',
       description: '',
-      appointmentDate: new Date().toISOString().slice(0, 16),
+      appointmentDate: defaultDateTimeString,
       duration: 60,
       notes: ''
     });

@@ -100,7 +100,7 @@ export interface Equipment {
   location?: string;
   lastMaintenance?: string;
   nextMaintenance?: string;
-  image?: string;
+  imageBase64?: string;
   notes?: string;
   createdById?: string;
   createdBy?: User;

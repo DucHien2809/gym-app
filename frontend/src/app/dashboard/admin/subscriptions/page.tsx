@@ -38,6 +38,7 @@ interface Member {
   name: string;
   email: string;
   phone?: string;
+  profileImage?: string;
 }
 
 interface Membership {
@@ -59,7 +60,6 @@ export default function SubscriptionManagement() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<string | null>(null);
-  const [isClosing, setIsClosing] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [isConfirmPaymentModalOpen, setIsConfirmPaymentModalOpen] = useState(false);
   
@@ -126,7 +126,8 @@ export default function SubscriptionManagement() {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                phone: user.phone || ''
+                phone: user.phone || '',
+                profileImage: user.profileImage // Thêm profileImage
               }));
             setMembers(filteredUsers);
           } else {
@@ -177,6 +178,31 @@ export default function SubscriptionManagement() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN');
+  };
+
+  // Tạo avatar mặc định từ tên
+  const generateAvatarFromName = (name: string) => {
+    const names = name.split(' ');
+    const initials = names.length >= 2 
+      ? names[0].charAt(0) + names[names.length - 1].charAt(0)
+      : names[0].charAt(0);
+    return initials.toUpperCase();
+  };
+
+  // Tạo màu background ngẫu nhiên từ tên
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'from-indigo-400 to-purple-500',
+      'from-blue-400 to-indigo-500', 
+      'from-green-400 to-blue-500',
+      'from-purple-400 to-pink-500',
+      'from-pink-400 to-red-500',
+      'from-red-400 to-pink-500',
+      'from-yellow-400 to-orange-500',
+      'from-orange-400 to-red-500'
+    ];
+    const index = name.length % colors.length;
+    return colors[index];
   };
 
   const handleAddNew = () => {
@@ -231,11 +257,8 @@ export default function SubscriptionManagement() {
   };
 
   const closeDeleteModal = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsDeleteModalOpen(false);
-      setIsClosing(false);
-    }, 200);
+    setIsDeleteModalOpen(false);
+    setSelectedSubscriptionId(null);
   };
 
   // Đóng modal form
@@ -349,7 +372,7 @@ export default function SubscriptionManagement() {
         throw new Error('Thông tin thành viên hoặc gói tập không hợp lệ');
       }
       
-      const paymentDate = formData.paymentStatus === 'paid' 
+      const paymentDate = formData.paymentStatus === 'completed' 
         ? new Date().toISOString().split('T')[0] 
         : undefined;
       
@@ -362,7 +385,7 @@ export default function SubscriptionManagement() {
         paymentAmount: formData.paymentAmount,
         paymentDate,
         paymentMethod: formData.paymentMethod,
-        active: formData.paymentStatus === 'paid',
+        active: formData.paymentStatus === 'completed',
         notes: formData.notes,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -370,7 +393,7 @@ export default function SubscriptionManagement() {
           name: member.name,
           email: member.email,
           phone: member.phone,
-          avatar: `https://randomuser.me/api/portraits/${Math.random() > 0.5 ? 'men' : 'women'}/${Math.floor(Math.random() * 10) + 1}.jpg`
+          avatar: member.profileImage // Sử dụng profileImage thật từ member data
         },
         membership: {
           name: membership.name,
@@ -455,7 +478,7 @@ export default function SubscriptionManagement() {
   // Hàm xác định màu và nhãn của trạng thái
   const getStatusDisplay = (status: string) => {
     switch (status) {
-      case 'paid':
+      case 'completed':
         return {
           label: 'Đã thanh toán',
           bgColor: 'bg-green-100',
@@ -467,9 +490,21 @@ export default function SubscriptionManagement() {
           bgColor: 'bg-yellow-100',
           textColor: 'text-yellow-800'
         };
-      case 'expired':
+      case 'failed':
         return {
-          label: 'Đã hết hạn',
+          label: 'Thanh toán thất bại',
+          bgColor: 'bg-red-100',
+          textColor: 'text-red-800'
+        };
+      case 'refunded':
+        return {
+          label: 'Đã hoàn tiền',
+          bgColor: 'bg-purple-100',
+          textColor: 'text-purple-800'
+        };
+      case 'cancelled':
+        return {
+          label: 'Đã hủy',
           bgColor: 'bg-red-100',
           textColor: 'text-red-800'
         };
@@ -490,12 +525,9 @@ export default function SubscriptionManagement() {
   
   // Đóng modal xác nhận thanh toán
   const closeConfirmPaymentModal = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsConfirmPaymentModalOpen(false);
-      setIsClosing(false);
-      setSelectedSubscriptionId(null);
-    }, 200);
+    if (confirmingPayment) return; // Prevent closing while processing
+    setIsConfirmPaymentModalOpen(false);
+    setSelectedSubscriptionId(null);
   };
 
   // Hàm xác nhận thanh toán cho đơn đăng ký
@@ -513,7 +545,7 @@ export default function SubscriptionManagement() {
       
       // Dữ liệu thanh toán
       const paymentData = {
-        paymentStatus: 'paid',
+        paymentStatus: 'completed',
         paymentDate: new Date().toISOString().split('T')[0],
         paymentMethod: subscription.paymentMethod || 'cash', // Giữ nguyên phương thức nếu có
         notes: subscription.notes ? `${subscription.notes}\nXác nhận thanh toán vào ${new Date().toLocaleString('vi-VN')}` : `Xác nhận thanh toán vào ${new Date().toLocaleString('vi-VN')}`
@@ -532,7 +564,7 @@ export default function SubscriptionManagement() {
             if (s.id === selectedSubscriptionId) {
               return {
                 ...s,
-                paymentStatus: 'paid',
+                paymentStatus: 'completed',
                 paymentDate: paymentData.paymentDate,
                 notes: paymentData.notes
               };
@@ -548,25 +580,11 @@ export default function SubscriptionManagement() {
         }
       } catch (apiError) {
         console.error('API error:', apiError);
-        
-        // Trong môi trường demo, vẫn cập nhật dữ liệu dù API lỗi
-        const updatedSubscriptions = subscriptions.map(s => {
-          if (s.id === selectedSubscriptionId) {
-            return {
-              ...s,
-              paymentStatus: 'paid',
-              paymentDate: paymentData.paymentDate,
-              notes: paymentData.notes
-            };
-          }
-          return s;
-        });
-        
-        // API lỗi - thông báo lỗi cho user
         alert('Không thể xác nhận thanh toán. Vui lòng thử lại sau.');
+        return; // Don't close modal on API error, let user try again
       }
       
-      // Đóng modal
+      // Đóng modal chỉ khi thành công
       closeConfirmPaymentModal();
       
     } catch (error) {
@@ -649,9 +667,11 @@ export default function SubscriptionManagement() {
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
                   <option value="all">Tất cả trạng thái</option>
-                  <option value="paid">Đã thanh toán</option>
+                  <option value="completed">Đã thanh toán</option>
                   <option value="pending">Chờ thanh toán</option>
-                  <option value="expired">Đã hết hạn</option>
+                  <option value="failed">Thanh toán thất bại</option>
+                  <option value="refunded">Đã hoàn tiền</option>
+                  <option value="cancelled">Đã hủy</option>
                 </select>
               </div>
             </div>
@@ -667,7 +687,7 @@ export default function SubscriptionManagement() {
                   <div className="flex-grow rounded-md bg-green-50 p-4">
                     <h3 className="text-sm font-medium text-green-900">Đã thanh toán</h3>
                     <p className="mt-2 text-3xl font-bold text-green-900">
-                      {filteredSubscriptions.filter(s => s.paymentStatus === 'paid').length}
+                      {filteredSubscriptions.filter(s => s.paymentStatus === 'completed').length}
                     </p>
                   </div>
                   <div className="flex-grow rounded-md bg-yellow-50 p-4">
@@ -676,10 +696,10 @@ export default function SubscriptionManagement() {
                       {filteredSubscriptions.filter(s => s.paymentStatus === 'pending').length}
                     </p>
                   </div>
-                  <div className="flex-grow rounded-md bg-red-50 p-4">
-                    <h3 className="text-sm font-medium text-red-900">Đã hết hạn</h3>
+                                      <div className="flex-grow rounded-md bg-red-50 p-4">
+                    <h3 className="text-sm font-medium text-red-900">Thất bại/Hủy</h3>
                     <p className="mt-2 text-3xl font-bold text-red-900">
-                      {filteredSubscriptions.filter(s => s.paymentStatus === 'expired').length}
+                      {filteredSubscriptions.filter(s => s.paymentStatus === 'failed' || s.paymentStatus === 'refunded' || s.paymentStatus === 'cancelled').length}
                     </p>
                   </div>
                 </div>
@@ -729,12 +749,43 @@ export default function SubscriptionManagement() {
                           <tr key={subscription.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4">
                               <div className="flex items-center">
-                                <div className="h-10 w-10 flex-shrink-0">
-                                  <img 
-                                    className="h-10 w-10 rounded-full object-cover" 
-                                    src={subscription.member.avatar || 'https://via.placeholder.com/40'} 
-                                    alt={subscription.member.name} 
-                                  />
+                                <div className="h-10 w-10 flex-shrink-0 relative">
+                                  {(() => {
+                                    // Tìm member thật từ danh sách đã load để lấy profileImage
+                                    const realMember = members.find(m => m.id === subscription.memberId);
+                                    const profileImage = realMember?.profileImage || subscription.member.avatar;
+                                    
+                                    if (profileImage) {
+                                      const imageUrl = profileImage.startsWith('http') ? profileImage : `http://localhost:5000${profileImage}`;
+                                      return (
+                                        <>
+                                          <img 
+                                            className="h-10 w-10 rounded-full object-cover border-2 border-gray-200" 
+                                            src={imageUrl} 
+                                            alt={subscription.member.name}
+                                            onError={(e) => {
+                                              const target = e.target as HTMLImageElement;
+                                              target.style.display = 'none';
+                                              const fallback = target.parentElement?.querySelector('.avatar-fallback') as HTMLElement;
+                                              if (fallback) fallback.style.display = 'flex';
+                                            }}
+                                          />
+                                          <div 
+                                            className={`avatar-fallback absolute inset-0 h-10 w-10 rounded-full bg-gradient-to-br ${getAvatarColor(subscription.member.name)} flex items-center justify-center text-white font-semibold text-sm border-2 border-gray-200`}
+                                            style={{ display: 'none' }}
+                                          >
+                                            {generateAvatarFromName(subscription.member.name)}
+                                          </div>
+                                        </>
+                                      );
+                                    } else {
+                                      return (
+                                        <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${getAvatarColor(subscription.member.name)} flex items-center justify-center text-white font-semibold text-sm border-2 border-gray-200`}>
+                                          {generateAvatarFromName(subscription.member.name)}
+                                        </div>
+                                      );
+                                    }
+                                  })()}
                                 </div>
                                 <div className="ml-4">
                                   <div className="text-sm font-medium text-gray-900">{subscription.member.name}</div>
@@ -805,23 +856,16 @@ export default function SubscriptionManagement() {
 
       {/* Modal xác nhận xóa */}
       {isDeleteModalOpen && (
-        <div className="fixed z-50 inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Overlay */}
-            <div 
-              className={`fixed inset-0 bg-gray-500 transition-opacity ${isClosing ? 'bg-opacity-0' : 'bg-opacity-75'}`}
-              style={{ transitionDuration: '200ms' }}
-              aria-hidden="true" 
-              onClick={closeDeleteModal}
-            ></div>
-            
-            {/* Trick để căn giữa modal */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
+        <div 
+          className="fixed inset-0 z-[55] overflow-y-auto" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={closeDeleteModal}
+        >
+          <div className="flex items-center justify-center min-h-screen p-4">
             {/* Modal Panel */}
             <div 
-              className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${isClosing ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
-              style={{ transitionDuration: '200ms' }}
+              className="relative bg-white rounded-lg shadow-xl max-w-lg w-full mx-auto"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="sm:flex sm:items-start">
@@ -992,8 +1036,10 @@ export default function SubscriptionManagement() {
                       className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md text-gray-700"
                     >
                       <option value="pending">Chờ thanh toán</option>
-                      <option value="paid">Đã thanh toán</option>
-                      <option value="expired">Đã hết hạn</option>
+                      <option value="completed">Đã thanh toán</option>
+                      <option value="failed">Thanh toán thất bại</option>
+                      <option value="refunded">Đã hoàn tiền</option>
+                      <option value="cancelled">Đã hủy</option>
                     </select>
                   </div>
                 </div>
@@ -1064,25 +1110,18 @@ export default function SubscriptionManagement() {
         </div>
       )}
 
-      {/* Thêm Modal xác nhận thanh toán */}
+      {/* Modal xác nhận thanh toán */}
       {isConfirmPaymentModalOpen && selectedSubscriptionId && (
-        <div className="fixed z-50 inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Overlay */}
-            <div 
-              className={`fixed inset-0 bg-gray-500 transition-opacity ${isClosing ? 'bg-opacity-0' : 'bg-opacity-75'}`}
-              style={{ transitionDuration: '200ms' }}
-              aria-hidden="true" 
-              onClick={closeConfirmPaymentModal}
-            ></div>
-            
-            {/* Căn giữa modal */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
+        <div 
+          className="fixed inset-0 z-[60] overflow-y-auto" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={closeConfirmPaymentModal}
+        >
+          <div className="flex items-center justify-center min-h-screen p-4">
             {/* Modal Panel */}
             <div 
-              className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${isClosing ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
-              style={{ transitionDuration: '200ms' }}
+              className="relative bg-white rounded-lg shadow-xl max-w-lg w-full mx-auto"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="sm:flex sm:items-start">

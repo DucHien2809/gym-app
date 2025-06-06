@@ -14,6 +14,7 @@ interface CancellationRequest {
   status: 'pending' | 'approved' | 'rejected';
   reason?: string;
   adminNote?: string;
+  refundAmount?: number;
   processedById?: string;
   processedDate?: string;
   createdAt: string;
@@ -47,6 +48,7 @@ export default function CancellationManagement() {
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<CancellationRequest | null>(null);
   const [processingNote, setProcessingNote] = useState('');
+  const [refundAmount, setRefundAmount] = useState<string>('');
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
 
@@ -138,6 +140,7 @@ export default function CancellationManagement() {
   const handleProcessClick = (request: CancellationRequest) => {
     setSelectedRequest(request);
     setProcessingNote('');
+    setRefundAmount('');
     setIsProcessModalOpen(true);
   };
 
@@ -145,6 +148,7 @@ export default function CancellationManagement() {
     setIsProcessModalOpen(false);
     setSelectedRequest(null);
     setProcessingNote('');
+    setRefundAmount('');
   };
 
   const handleApprove = async () => {
@@ -156,6 +160,7 @@ export default function CancellationManagement() {
       const processingData = {
         status: 'approved',
         adminNote: processingNote,
+        refundAmount: refundAmount ? parseFloat(refundAmount) : 0,
         processedById: auth.user?.id
       };
       
@@ -493,7 +498,15 @@ export default function CancellationManagement() {
                       
                       {selectedRequest.status !== 'pending' && (
                         <>
-                          <div className="sm:col-span-2">
+                          {selectedRequest.status === 'approved' && selectedRequest.refundAmount !== undefined && (
+                            <div>
+                              <dt className="text-sm font-medium text-gray-500">Số tiền hoàn trả</dt>
+                              <dd className="mt-1 text-sm text-gray-900 font-semibold text-green-600">
+                                {selectedRequest.refundAmount.toLocaleString('vi-VN')} VND
+                              </dd>
+                            </div>
+                          )}
+                          <div className={selectedRequest.status === 'approved' && selectedRequest.refundAmount !== undefined ? "" : "sm:col-span-2"}>
                             <dt className="text-sm font-medium text-gray-500">Ghi chú của quản trị viên</dt>
                             <dd className="mt-1 text-sm text-gray-900 whitespace-pre-line">{selectedRequest.adminNote || 'Không có ghi chú'}</dd>
                           </div>
@@ -505,20 +518,47 @@ export default function CancellationManagement() {
                       )}
                       
                       {selectedRequest.status === 'pending' && (
-                        <div className="sm:col-span-2">
-                          <label htmlFor="admin-note" className="block text-sm font-medium text-gray-700">
-                            Ghi chú (nếu có)
-                          </label>
-                          <textarea
-                            id="admin-note"
-                            name="admin-note"
-                            rows={3}
-                            value={processingNote}
-                            onChange={(e) => setProcessingNote(e.target.value)}
-                            className="mt-1 shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
-                            placeholder="Thêm ghi chú cho quyết định của bạn..."
-                          />
-                        </div>
+                        <>
+                          <div className="sm:col-span-2">
+                            <label htmlFor="refund-amount" className="block text-sm font-medium text-gray-700">
+                              Số tiền hoàn trả (VND)
+                            </label>
+                            <div className="mt-1 relative rounded-md shadow-sm">
+                              <input
+                                type="number"
+                                id="refund-amount"
+                                name="refund-amount"
+                                min="0"
+                                max={selectedRequest.subscription?.membership?.price || 0}
+                                step="1000"
+                                value={refundAmount}
+                                onChange={(e) => setRefundAmount(e.target.value)}
+                                className="block w-full pr-12 sm:text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="0"
+                              />
+                              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <span className="text-gray-500 sm:text-sm">VND</span>
+                              </div>
+                            </div>
+                            <p className="mt-1 text-xs text-gray-500">
+                              Số tiền gốc: {selectedRequest.subscription?.membership?.price?.toLocaleString('vi-VN')} VND
+                            </p>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label htmlFor="admin-note" className="block text-sm font-medium text-gray-700">
+                              Ghi chú (nếu có)
+                            </label>
+                            <textarea
+                              id="admin-note"
+                              name="admin-note"
+                              rows={3}
+                              value={processingNote}
+                              onChange={(e) => setProcessingNote(e.target.value)}
+                              className="mt-1 shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
+                              placeholder="Thêm ghi chú cho quyết định của bạn..."
+                            />
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>

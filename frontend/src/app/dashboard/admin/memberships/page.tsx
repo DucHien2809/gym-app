@@ -6,6 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import { membershipAPI, subscriptionAPI, cancellationAPI, userAPI } from '@/services/api';
 import { FiEdit2, FiTrash2, FiPlus, FiArrowLeft, FiCheck, FiX, FiDollarSign, FiClock, FiInfo, FiList, FiUser, FiCalendar, FiSearch, FiFilter, FiPackage } from 'react-icons/fi';
 import useModal from '@/hooks/useModal';
+import AvatarImage from './AvatarImage';
+
 
 interface Membership {
   id: string;
@@ -33,6 +35,7 @@ interface CancellationRequest {
   status: 'pending' | 'approved' | 'rejected';
   reason?: string;
   adminNote?: string;
+  refundAmount?: number;
   processedById?: string;
   processedDate?: string;
   createdAt: string;
@@ -41,7 +44,7 @@ interface CancellationRequest {
     name: string;
     email: string;
     phone?: string;
-    avatar?: string;
+    profileImage?: string;
   };
   subscription?: {
     id: string;
@@ -87,6 +90,7 @@ export default function MembershipManagement() {
 
   // State cho tab quản lý gói tập và đăng ký
   const [activeTab, setActiveTab] = useState('memberships'); // 'memberships', 'subscriptions', hoặc 'cancellations'
+  const [showDebug, setShowDebug] = useState(false);
   
   // States cho danh sách đăng ký chờ thanh toán
   const [pendingSubscriptions, setPendingSubscriptions] = useState<any[]>([]);
@@ -109,6 +113,7 @@ export default function MembershipManagement() {
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<CancellationRequest | null>(null);
   const [processingNote, setProcessingNote] = useState('');
+  const [refundAmount, setRefundAmount] = useState<string>('');
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
 
@@ -258,7 +263,37 @@ export default function MembershipManagement() {
         const pendingSubs = response.data.subscriptions.filter(
           (sub: any) => sub.paymentStatus === 'pending'
         );
-        setPendingSubscriptions(pendingSubs);
+        
+        // Enhance subscriptions with member details
+        const enhancedSubs = await Promise.all(
+          pendingSubs.map(async (sub: any) => {
+            let enhancedSub = { ...sub };
+            
+            // Get detailed member info if memberId exists
+            if (sub.memberId) {
+              try {
+                const memberResponse = await userAPI.getUser(sub.memberId);
+                if (memberResponse.status === 'success' && memberResponse.data?.user) {
+                  const userData = memberResponse.data.user as any;
+                  enhancedSub.member = {
+                    ...sub.member, // Keep existing member data
+                    name: userData.name || sub.member?.name || 'Unknown',
+                    email: userData.email || sub.member?.email || 'N/A',
+                    phone: userData.phone || sub.member?.phone,
+                    profileImage: userData.profileImage, // Get real profile image
+                  };
+                }
+              } catch (error) {
+                console.error('Error fetching member details for subscription:', error);
+              }
+            }
+            
+            return enhancedSub;
+          })
+        );
+        
+        console.log('Enhanced subscriptions with member details:', enhancedSubs);
+        setPendingSubscriptions(enhancedSubs);
       } else {
         // Use mock data if API fails
         const mockPendingSubscriptions = [
@@ -274,7 +309,8 @@ export default function MembershipManagement() {
             createdAt: new Date().toISOString(),
             member: {
               name: 'Nguyễn Văn A',
-              email: 'nguyenvana@example.com'
+              email: 'nguyenvana@example.com',
+              profileImage: 'user1.jpg'
             },
             membership: {
               name: 'Basic',
@@ -294,7 +330,8 @@ export default function MembershipManagement() {
             createdAt: new Date(new Date().setHours(new Date().getHours() - 12)).toISOString(),
             member: {
               name: 'Trần Thị B',
-              email: 'tranthib@example.com'
+              email: 'tranthib@example.com',
+              profileImage: 'user2.jpg'
             },
             membership: {
               name: 'Standard',
@@ -411,7 +448,7 @@ export default function MembershipManagement() {
                   name: userData.name || 'Unknown',
                   email: userData.email || 'N/A',
                   phone: userData.phone,
-                  avatar: userData.avatar,
+                  profileImage: userData.profileImage,
                 };
               }
             } catch (error) {
@@ -432,6 +469,7 @@ export default function MembershipManagement() {
           })
         );
         
+        console.log('Enhanced cancellation requests with member details:', enhancedRequests);
         setCancellationRequests(enhancedRequests);
       } else {
         // Use mock data if API fails
@@ -447,7 +485,8 @@ export default function MembershipManagement() {
             updatedAt: new Date().toISOString(),
             member: {
               name: 'Nguyễn Văn A',
-              email: 'nguyenvana@example.com'
+              email: 'nguyenvana@example.com',
+              profileImage: 'user1.jpg'
             },
             subscription: {
               id: 'sub1',
@@ -473,7 +512,8 @@ export default function MembershipManagement() {
             updatedAt: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
             member: {
               name: 'Trần Thị B',
-              email: 'tranthib@example.com'
+              email: 'tranthib@example.com',
+              profileImage: 'user2.jpg'
             },
             subscription: {
               id: 'sub2',
@@ -509,6 +549,7 @@ export default function MembershipManagement() {
     setIsProcessModalOpen(false);
     setSelectedRequest(null);
     setProcessingNote('');
+    setRefundAmount('');
   };
 
   const handleApprove = async () => {
@@ -520,6 +561,7 @@ export default function MembershipManagement() {
       const processingData = {
         status: 'approved',
         adminNote: processingNote,
+        refundAmount: refundAmount ? parseFloat(refundAmount) : 0,
         processedById: auth.user?.id
       };
       
@@ -544,9 +586,23 @@ export default function MembershipManagement() {
       } else {
         setCancellationsError('Không thể duyệt yêu cầu hủy');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error approving cancellation request:', error);
-      setCancellationsError('Đã xảy ra lỗi khi duyệt yêu cầu hủy');
+      console.error('Error details:', {
+        message: error?.message,
+        httpStatus: error?.httpStatus,
+        responseData: error?.responseData,
+        status: error?.status
+      });
+      
+      let errorMessage = 'Đã xảy ra lỗi khi duyệt yêu cầu hủy';
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.responseData?.message) {
+        errorMessage = error.responseData.message;
+      }
+      
+      setCancellationsError(errorMessage);
     } finally {
       setIsApproving(false);
     }
@@ -585,9 +641,23 @@ export default function MembershipManagement() {
       } else {
         setCancellationsError('Không thể từ chối yêu cầu hủy');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error rejecting cancellation request:', error);
-      setCancellationsError('Đã xảy ra lỗi khi từ chối yêu cầu hủy');
+      console.error('Error details:', {
+        message: error?.message,
+        httpStatus: error?.httpStatus,
+        responseData: error?.responseData,
+        status: error?.status
+      });
+      
+      let errorMessage = 'Đã xảy ra lỗi khi từ chối yêu cầu hủy';
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.responseData?.message) {
+        errorMessage = error.responseData.message;
+      }
+      
+      setCancellationsError(errorMessage);
     } finally {
       setIsRejecting(false);
     }
@@ -1146,9 +1216,11 @@ export default function MembershipManagement() {
                         <tr key={subscription.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 table-cell-nowrap">
                             <div className="flex items-center">
-                              <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                                <FiUser className="w-5 h-5 text-indigo-600" />
-                              </div>
+                              <AvatarImage 
+                                profileImage={subscription.member?.profileImage}
+                                name={subscription.member?.name || 'User'}
+                                size="h-10 w-10"
+                              />
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">{subscription.member?.name}</div>
                                 <div className="text-sm text-gray-500">{subscription.member?.email}</div>
@@ -1312,11 +1384,11 @@ export default function MembershipManagement() {
                             <tr key={request.id} className="hover:bg-gray-50">
                               <td className="px-6 py-4 table-cell-nowrap">
                                 <div className="flex items-center">
-                                  <div className="flex-shrink-0 h-10 w-10">
-                                    <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                                      <FiUser className="h-5 w-5 text-indigo-600" />
-                                    </div>
-                                  </div>
+                                  <AvatarImage 
+                                    profileImage={request.member?.profileImage}
+                                    name={request.member?.name || 'User'}
+                                    size="h-10 w-10"
+                                  />
                                   <div className="ml-4">
                                     <div className="text-sm font-medium text-gray-900">{request.member?.name || 'N/A'}</div>
                                     <div className="text-sm text-gray-500">{request.member?.email || 'N/A'}</div>
@@ -1862,20 +1934,41 @@ export default function MembershipManagement() {
                       )}
                       
                       {selectedRequest.status === 'pending' && (
-                        <div className="sm:col-span-2">
-                          <label htmlFor="admin-note" className="block text-sm font-medium text-gray-700">
-                            Ghi chú (nếu có)
-                          </label>
-                          <textarea
-                            id="admin-note"
-                            name="admin-note"
-                            rows={3}
-                            value={processingNote}
-                            onChange={(e) => setProcessingNote(e.target.value)}
-                            className="mt-1 shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
-                            placeholder="Thêm ghi chú cho quyết định của bạn..."
-                          />
-                        </div>
+                        <>
+                          <div className="sm:col-span-2">
+                            <label htmlFor="admin-note" className="block text-sm font-medium text-gray-700">
+                              Ghi chú (nếu có)
+                            </label>
+                            <textarea
+                              id="admin-note"
+                              name="admin-note"
+                              rows={3}
+                              value={processingNote}
+                              onChange={(e) => setProcessingNote(e.target.value)}
+                              className="mt-1 shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
+                              placeholder="Thêm ghi chú cho quyết định của bạn..."
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label htmlFor="refund-amount" className="block text-sm font-medium text-gray-700">
+                              Số tiền hoàn lại (VND)
+                            </label>
+                            <input
+                              type="number"
+                              id="refund-amount"
+                              name="refund-amount"
+                              min="0"
+                              max={selectedRequest.subscription?.membership?.price || 0}
+                              value={refundAmount}
+                              onChange={(e) => setRefundAmount(e.target.value)}
+                              className="mt-1 shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
+                              placeholder={`Tối đa: ${(selectedRequest.subscription?.membership?.price || 0).toLocaleString('vi-VN')} VND`}
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              Giá gói: {(selectedRequest.subscription?.membership?.price || 0).toLocaleString('vi-VN')} VND
+                            </p>
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>

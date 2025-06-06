@@ -2,7 +2,8 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { equipmentAPI, uploadAPI } from '@/services/api';
+import { equipmentAPI } from '@/services/api';
+import { fileToBase64, isValidImageFile, isValidImageSize, resizeImageToBase64 } from '@/utils/imageUtils';
 import { FiSave, FiX, FiUpload } from 'react-icons/fi';
 import Link from 'next/link';
 
@@ -42,7 +43,7 @@ export default function AddEquipmentPage() {
     status: 'available',
     location: '',
     notes: '',
-    image: 'default-equipment.jpg'
+    imageBase64: ''
   });
 
   // Xử lý thay đổi input
@@ -72,7 +73,6 @@ export default function AddEquipmentPage() {
     }
 
     setImageFile(file);
-    setFormData(prev => ({ ...prev, image: file.name }));
     
     // Tạo URL xem trước
     const reader = new FileReader();
@@ -99,28 +99,31 @@ export default function AddEquipmentPage() {
         throw new Error('Vui lòng điền đầy đủ các trường bắt buộc');
       }
 
-      // Tải lên hình ảnh nếu có
-      let imageUrl = formData.image;
+      // Convert image to base64 if selected
+      let imageBase64 = '';
       if (imageFile) {
         try {
-          // Sử dụng uploadAPI service đã có sẵn
-          const uploadResult = await uploadAPI.uploadFile(imageFile);
-          
-          if (uploadResult.status === 'success' && uploadResult.data) {
-            imageUrl = String(uploadResult.data.url); // Lấy URL hình ảnh từ kết quả
-          } else {
-            throw new Error('Không thể tải lên hình ảnh');
+          // Validate image
+          if (!isValidImageFile(imageFile)) {
+            throw new Error('Vui lòng chọn file hình ảnh hợp lệ (JPEG, PNG, GIF, WebP)');
           }
-        } catch (uploadErr: any) {
-          console.error('Upload error:', uploadErr);
-          throw new Error(uploadErr.message || 'Lỗi khi tải lên hình ảnh. Vui lòng thử lại.');
+          
+          if (!isValidImageSize(imageFile, 5)) {
+            throw new Error('Kích thước hình ảnh không được vượt quá 5MB');
+          }
+          
+          // Resize and convert to base64
+          imageBase64 = await resizeImageToBase64(imageFile, 800, 600, 0.8);
+        } catch (imageErr: any) {
+          console.error('Image processing error:', imageErr);
+          throw new Error(imageErr.message || 'Lỗi khi xử lý hình ảnh');
         }
       }
 
-      // Tạo thiết bị với URL hình ảnh đã tải lên
+      // Create equipment with base64 image
       await equipmentAPI.createEquipment({
         ...formData,
-        image: imageUrl,
+        imageBase64,
         purchasePrice: parseFloat(formData.purchasePrice)
       });
 
@@ -325,12 +328,10 @@ export default function AddEquipmentPage() {
                 <div className="flex items-center">
                   <input
                     type="text"
-                    name="image"
-                    value={formData.image}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border rounded-l-md"
-                    placeholder="Tên file hoặc URL"
-                    readOnly={!!imageFile}
+                    value={imageFile ? imageFile.name : 'Chưa chọn file'}
+                    className="w-full px-4 py-2 border rounded-l-md bg-gray-50"
+                    placeholder="Chọn hình ảnh"
+                    readOnly
                   />
                   <button
                     type="button"

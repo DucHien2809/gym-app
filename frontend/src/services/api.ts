@@ -16,6 +16,8 @@ const api = axios.create({
 
 // Helper function to handle API errors
 const handleApiError = (error: any) => {
+  console.log('handleApiError: Original error:', error);
+  
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<ApiResponse<any>>;
     
@@ -32,24 +34,43 @@ const handleApiError = (error: any) => {
                          axiosError.response?.statusText || 
                          'Something went wrong';
     
-    return Promise.reject({
+    const customError = {
       status: 'error',
       message: errorMessage,
       error: {
         status: axiosError.response?.status?.toString() || '500',
         message: errorMessage
+      },
+      // Preserve original error information for debugging
+      originalError: error,
+      axiosDetails: {
+        status: axiosError.response?.status,
+        statusText: axiosError.response?.statusText,
+        data: axiosError.response?.data,
+        config: {
+          method: axiosError.config?.method,
+          url: axiosError.config?.url,
+          headers: axiosError.config?.headers
+        }
       }
-    });
+    };
+    
+    console.log('handleApiError: Transformed axios error:', customError);
+    return Promise.reject(customError);
   }
   
-  return Promise.reject({
+  const customError = {
     status: 'error',
     message: error.message || 'An unexpected error occurred',
     error: {
       status: '500',
       message: error.message
-    }
-  });
+    },
+    originalError: error
+  };
+  
+  console.log('handleApiError: Transformed non-axios error:', customError);
+  return Promise.reject(customError);
 };
 
 // Interceptor thêm token vào header nếu có
@@ -359,6 +380,89 @@ export const equipmentAPI = {
 
 // Dashboard API
 export const dashboardAPI = {
+  getAdminDashboardStats: async () => {
+    interface AdminDashboardResponse {
+      stats: {
+        totalMembers: number;
+        activeSubscriptions: number;
+        totalRevenue: number;
+        totalRefunds: number;
+        netRevenue: number;
+        monthlyRevenue: number;
+        pendingCancellations: number;
+        totalEquipment: number;
+      };
+      recentTransactions: Array<{
+        id: string;
+        type: 'revenue' | 'refund';
+        memberName: string;
+        membershipName: string;
+        amount: number;
+        date: string;
+        description: string;
+      }>;
+    }
+    
+    try {
+      console.log('API service: About to call /dashboard/admin endpoint...');
+      
+      // Make the request using axios directly to bypass interceptors and see raw error
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: any = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const response = await axios.get(`${API_URL}/dashboard/admin`, {
+        headers,
+        timeout: 15000,
+      });
+      
+      console.log('API service: Received response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('API service: Raw axios error caught:', error);
+      console.error('API service: Error message:', error.message);
+      console.error('API service: Error response:', error.response);
+      console.error('API service: Error request:', error.request);
+      console.error('API service: Error config:', error.config);
+      
+      if (error.response) {
+        console.error('API service: Response status:', error.response.status);
+        console.error('API service: Response data:', error.response.data);
+        console.error('API service: Response headers:', error.response.headers);
+        
+        // Create a detailed error object
+        const detailedError = {
+          status: 'error',
+          message: error.response.data?.message || error.message || 'API call failed',
+          httpStatus: error.response.status,
+          responseData: error.response.data,
+          url: error.config?.url,
+        };
+        
+        throw detailedError;
+      } else if (error.request) {
+        console.error('API service: No response received');
+        throw {
+          status: 'error',
+          message: 'Không thể kết nối đến server',
+          httpStatus: 0,
+        };
+      } else {
+        console.error('API service: Request setup error');
+        throw {
+          status: 'error',
+          message: error.message || 'Lỗi khi thiết lập request',
+          httpStatus: 0,
+        };
+      }
+    }
+  },
+
   getTrainerDashboardStats: async () => {
     interface DashboardResponse {
       stats: {
