@@ -18,7 +18,7 @@ export default function MembershipPage() {
         setLoading(true);
         const response = await membershipAPI.getAllMemberships();
         if (response.status === 'success' && response.data?.memberships) {
-          setMemberships(response.data.memberships as Membership[]);
+          setMemberships((response.data as any).memberships);
         }
       } catch (error) {
         setError('Không thể tải dữ liệu gói tập. Vui lòng thử lại sau.');

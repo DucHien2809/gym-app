@@ -233,7 +233,7 @@ export default function TrainerProfile() {
     try {
       const response = await uploadAPI.uploadProfileImage(imageFile);
       if (response.status === 'success' && response.data) {
-        return response.data.url;
+        return (response.data as unknown as { url: string }).url;
       }
       throw new Error('Không thể tải lên hình ảnh');
     } catch (err: any) {

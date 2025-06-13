@@ -76,10 +76,10 @@ export default function TrainerDashboard() {
       
       // Set recent appointments
       if (appointmentsResponse.status === 'success' && appointmentsResponse.data?.appointments) {
-        const appointments = appointmentsResponse.data.appointments as any[];
+        const appointments = (appointmentsResponse.data as any).appointments;
         const recent = appointments
           .slice(0, 5)
-          .map(apt => ({
+          .map((apt: any) => ({
             id: apt.id,
             title: apt.title,
             memberName: apt.member?.name || 'Unknown Member',
@@ -92,7 +92,7 @@ export default function TrainerDashboard() {
         setStats(prev => ({
           ...prev,
           totalAppointments: appointments.length,
-          pendingAppointments: appointments.filter(apt => apt.status === 'pending').length
+          pendingAppointments: appointments.filter((apt: any) => apt.status === 'pending').length
         }));
       }
       
