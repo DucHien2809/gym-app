@@ -1,0 +1,118 @@
+@startuml state
+left to right direction
+skinparam state {
+    BackgroundColor LightBlue
+    BorderColor Gray
+    FontColor Black
+}
+
+' Trạng thái chung
+state "Chưa xác thực" as UA
+state "Đang xác thực" as AUTH
+state "Lỗi đăng nhập" as ERR
+
+' Bảng điều khiển Quản trị viên
+state "Bảng điều khiển Quản trị viên" as AD {
+    state "Xem thống kê" as AD_STATS
+    state "Quản lý người dùng" as AD_USERS
+    state "Quản lý hội viên" as AD_MEMBERSHIPS
+    state "Quản lý gói đăng ký" as AD_SUBS
+    state "Quản lý thiết bị" as AD_EQUIP
+    state "Xem báo cáo" as AD_REPORTS
+}
+
+' Bảng điều khiển Huấn luyện viên
+state "Bảng điều khiển Huấn luyện viên" as TD {
+    state "Xem lịch tập" as TD_SCHEDULE
+    state "Quản lý lịch hẹn" as TD_APPOINTMENTS
+    state "Quản lý điểm danh" as TD_ATTENDANCE
+    state "Xem hội viên" as TD_MEMBERS
+}
+
+' Bảng điều khiển Hội viên
+state "Bảng điều khiển Hội viên" as MD {
+    state "Xem hồ sơ" as MD_PROFILE
+    state "Quản lý gói đăng ký" as MD_SUBS
+    state "Đặt lịch hẹn" as MD_BOOK
+    state "Xem lịch sử" as MD_HISTORY
+}
+
+' Chuyển trạng thái từ Chưa xác thực
+UA --> AUTH : Thử đăng nhập
+AUTH --> AD : Đăng nhập thành công (Quản trị viên)
+AUTH --> TD : Đăng nhập thành công (Huấn luyện viên)
+AUTH --> MD : Đăng nhập thành công (Hội viên)
+AUTH --> ERR : Đăng nhập thất bại
+
+' Quản trị viên
+AD --> AD_STATS : Xem thống kê
+AD --> AD_USERS : Quản lý người dùng
+AD --> AD_MEMBERSHIPS : Quản lý hội viên
+AD --> AD_SUBS : Quản lý gói đăng ký
+AD --> AD_EQUIP : Quản lý thiết bị
+AD --> AD_REPORTS : Xem báo cáo
+AD --> UA : Đăng xuất
+
+' Huấn luyện viên
+TD --> TD_SCHEDULE : Xem lịch tập
+TD --> TD_APPOINTMENTS : Quản lý lịch hẹn
+TD --> TD_ATTENDANCE : Quản lý điểm danh
+TD --> TD_MEMBERS : Xem hội viên
+TD --> UA : Đăng xuất
+
+' Hội viên
+MD --> MD_PROFILE : Xem hồ sơ
+MD --> MD_SUBS : Quản lý gói đăng ký
+MD --> MD_BOOK : Đặt lịch hẹn
+MD --> MD_HISTORY : Xem lịch sử
+MD --> UA : Đăng xuất
+
+' Trạng thái lỗi
+ERR --> UA : Thử lại
+
+' Substate: Quản lý người dùng
+state AD_USERS {
+    [*] --> XemNguoiDung
+    XemNguoiDung --> ThemNguoiDung : Thêm mới
+    XemNguoiDung --> SuaNguoiDung : Chỉnh sửa
+    XemNguoiDung --> XoaNguoiDung : Xóa
+}
+
+' Substate: Quản lý hội viên
+state AD_MEMBERSHIPS {
+    [*] --> XemHoiVien
+    XemHoiVien --> ThemHoiVien : Thêm mới
+    XemHoiVien --> SuaHoiVien : Chỉnh sửa
+    XemHoiVien --> XoaHoiVien : Xóa
+}
+
+' Substate: Quản lý lịch hẹn
+state TD_APPOINTMENTS {
+    [*] --> XemLichHen
+    XemLichHen --> ChapNhanLichHen : Chấp nhận
+    XemLichHen --> TuChoiLichHen : Từ chối
+    XemLichHen --> HoanTatLichHen : Hoàn tất
+}
+
+' Substate: Quản lý điểm danh
+state TD_ATTENDANCE {
+    [*] --> XemDiemDanh
+    XemDiemDanh --> CheckIn : Điểm danh vào
+    XemDiemDanh --> CheckOut : Điểm danh ra
+}
+
+' Substate: Quản lý gói đăng ký
+state MD_SUBS {
+    [*] --> XemGoiDangKy
+    XemGoiDangKy --> GiaHan : Gia hạn
+    XemGoiDangKy --> HuyGoi : Hủy
+}
+
+' Substate: Đặt lịch hẹn
+state MD_BOOK {
+    [*] --> XemKhungGio
+    XemKhungGio --> ChonHLV : Chọn HLV
+    XemKhungGio --> DatLich : Đặt lịch
+}
+
+@enduml

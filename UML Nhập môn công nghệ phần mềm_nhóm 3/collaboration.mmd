@@ -1,0 +1,55 @@
+flowchart TD
+    %% Frontend
+    subgraph Frontend
+        LP[LoginPage]
+        AC[AuthContext]
+        DB[Dashboard]
+        API[API Service]
+    end
+
+    %% Backend
+    subgraph Backend
+        ATC[AuthController]
+        ATM[AuthMiddleware]
+        UC[UserController]
+        DC[DashboardController]
+    end
+
+    %% MongoDB
+    subgraph MongoDB
+        UCOL[User Collection]
+        ACOL[Attendance Collection]
+        MCOL[Membership Collection]
+    end
+
+    %% Arrows with numbered labels
+    AC -->|1| API
+    API -->|2| ATC
+    ATC -->|3| UC
+    UC -->|4| ATC
+    ATC -->|5| API
+    API -->|6| AC
+
+    AC -->|7| API
+    API -->|8| ATM
+    ATM -->|9| ATC
+    ATC -->|10| UC
+    UC -->|11| ATC
+    ATC -->|12| API
+    API -->|13| AC
+
+    DB -->|14| API
+    API -->|15| DC
+    DC -->|16| UC
+    DC -->|17| ACOL
+    DC -->|18| MCOL
+    UC -->|19| DC
+    ACOL -->|20| DC
+    MCOL -->|21| DC
+    DC -->|22| API
+    API -->|23| DB
+
+    AC -->|24| API
+    API -->|25| ATM
+    ATM -->|26| API
+    API -->|27| AC

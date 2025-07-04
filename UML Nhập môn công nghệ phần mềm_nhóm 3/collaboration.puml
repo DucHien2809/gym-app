@@ -1,0 +1,58 @@
+@startuml collab
+!theme plain
+skinparam componentStyle rectangle
+skinparam linetype ortho
+
+' Components
+package "Frontend" {
+    [AuthContext] as AC
+    [LoginPage] as LP
+    [Dashboard] as DB
+    [API Service] as API
+}
+
+package "Backend" {
+    [AuthController] as ATC
+    [AuthMiddleware] as ATM
+    [UserController] as UC
+    [DashboardController] as DC
+}
+
+database "MongoDB" {
+    [User Collection] as UCOL
+    [Attendance Collection] as ACOL
+    [Membership Collection] as MCOL
+}
+
+' Relationships and Messages (number only)
+AC --> API: 1
+API --> ATC: 2
+ATC --> UC: 3
+UC --> ATC: 4
+ATC --> API: 5
+API --> AC: 6
+
+AC --> API: 7
+API --> ATM: 8
+ATM --> ATC: 9
+ATC --> UC: 10
+UC --> ATC: 11
+ATC --> API: 12
+API --> AC: 13
+
+DB --> API: 14
+API --> DC: 15
+DC --> UC: 16
+DC --> ACOL: 17
+DC --> MCOL: 18
+UC --> DC: 19
+ACOL --> DC: 20
+MCOL --> DC: 21
+DC --> API: 22
+API --> DB: 23
+
+AC --> API: 24
+API --> ATM: 25
+ATM --> API: 26
+API --> AC: 27
+@enduml

@@ -1,0 +1,122 @@
+@startuml component
+
+!theme plain
+skinparam componentStyle uml2
+skinparam linetype ortho
+
+' Frontend Components
+package "Frontend" {
+    [Next.js App] as NextApp
+    
+    package "Pages" {
+        [Dashboard] as Dashboard
+        [Login] as Login
+        [Membership] as Membership
+        [Equipment] as Equipment
+        [Attendance] as Attendance
+        [Appointments] as Appointments
+    }
+    
+    package "Components" {
+        [AuthContext] as AuthContext
+        [Layout] as Layout
+        [Navigation] as Navigation
+        [Forms] as Forms
+        [Tables] as Tables
+    }
+    
+    package "Services" {
+        [ApiService] as ApiService
+        [AuthService] as AuthService
+    }
+}
+
+' Backend Components
+package "Backend" {
+    [Express Server] as ExpressServer
+    
+    package "Middleware" {
+        [AuthMiddleware] as AuthMiddleware
+        [ValidationMiddleware] as ValidationMiddleware
+        [ErrorMiddleware] as ErrorMiddleware
+    }
+
+    package "Controllers" {
+        [AuthController] as AuthController
+        [UserController] as UserController
+        [MembershipController] as MembershipController
+        [EquipmentController] as EquipmentController
+        [AttendanceController] as AttendanceController
+        [AppointmentController] as AppointmentController
+    }
+    
+    package "Database" {
+        [Prisma ORM] as PrismaORM
+        [MongoDB] as MongoDB
+    }
+}
+
+' External Services
+package "External Services" {
+    [Payment Gateway] as PaymentGateway
+    [Email Service] as EmailService
+}
+
+' Relationships - Frontend
+NextApp --> Dashboard
+NextApp --> Login
+NextApp --> Membership
+NextApp --> Equipment
+NextApp --> Attendance
+NextApp --> Appointments
+
+Dashboard --> AuthContext
+Dashboard --> Layout
+Dashboard --> Navigation
+Dashboard --> Tables
+
+Login --> AuthContext
+Login --> Forms
+
+Membership --> Forms
+Membership --> Tables
+Membership --> ApiService
+
+Equipment --> Forms
+Equipment --> Tables
+Equipment --> ApiService
+
+Attendance --> Forms
+Attendance --> Tables
+Attendance --> ApiService
+
+Appointments --> Forms
+Appointments --> Tables
+Appointments --> ApiService
+
+ApiService --> ExpressServer
+AuthService --> ExpressServer
+
+' Backend flow: Express → Middleware → Controller
+ExpressServer --> AuthMiddleware
+AuthMiddleware --> ValidationMiddleware
+ValidationMiddleware --> AuthController
+ValidationMiddleware --> UserController
+ValidationMiddleware --> MembershipController
+ValidationMiddleware --> EquipmentController
+ValidationMiddleware --> AttendanceController
+ValidationMiddleware --> AppointmentController
+
+AuthController --> PrismaORM
+UserController --> PrismaORM
+MembershipController --> PrismaORM
+EquipmentController --> PrismaORM
+AttendanceController --> PrismaORM
+AppointmentController --> PrismaORM
+
+PrismaORM --> MongoDB
+
+MembershipController --> PaymentGateway
+AuthController --> EmailService
+
+@enduml

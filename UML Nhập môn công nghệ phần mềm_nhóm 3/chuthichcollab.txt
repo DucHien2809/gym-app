@@ -1,0 +1,28 @@
+#	Nội dung Message
+1	login(credentials) từ AuthContext đến API Service
+2	POST /auth/login gọi AuthController
+3	verifyUser() từ AuthController đến UserController
+4	Trả về dữ liệu người dùng
+5	Trả về JWT token
+6	Lưu token trong AuthContext
+7	getMe() yêu cầu thông tin người dùng
+8	verify token thông qua Middleware
+9	get user data trong AuthController
+10	Truy vấn thông tin người dùng
+11	Trả về dữ liệu người dùng
+12	Trả thông tin người dùng về API
+13	Cập nhật trạng thái xác thực trong AuthContext
+14	Yêu cầu dashboard data từ frontend
+15	get stats từ API đến DashboardController
+16	Truy vấn người dùng từ UserController
+17	Truy vấn điểm danh từ AttendanceCollection
+18	Truy vấn gói hội viên từ MembershipCollection
+19	Trả thống kê người dùng
+20	Trả thống kê điểm danh
+21	Trả thống kê hội viên
+22	Trả dữ liệu dashboard về API
+23	Cập nhật dashboard trên frontend
+24	logout() từ AuthContext đến API
+25	Middleware xóa phiên đăng nhập
+26	Phiên đăng nhập đã bị xóa
+27	Xóa token trong AuthContext

@@ -1,0 +1,110 @@
+@startuml puml
+skinparam actorStyle awesome
+skinparam usecase {
+    BackgroundColor LightBlue
+    BorderColor DarkBlue
+    ArrowColor DarkBlue
+}
+left to right direction
+' Actors
+:Quản trị viên: as Admin
+:Huấn luyện viên: as Trainer
+:Thành viên: as Member
+
+' Use Cases
+(Đăng nhập) as Login
+(Đăng xuất) as Logout
+(Xem bảng điều khiển) as ViewDashboard
+(Quản lý điểm danh) as ManageAttendance
+(Xem lịch sử điểm danh) as ViewAttendanceHistory
+(Điểm danh vào) as CheckIn
+(Điểm danh ra) as CheckOut
+(Quản lý thành viên) as ManageMembers
+(Quản lý gói tập) as ManageSubscriptions
+(Xem thông tin cá nhân) as ViewProfile
+(Cập nhật thông tin cá nhân) as UpdateProfile
+(Xem thống kê) as ViewStats
+
+' Thêm các use case mới
+(Quản lý lịch hẹn) as ManageAppointments
+(Đặt lịch hẹn) as BookAppointment
+(Hủy lịch hẹn) as CancelAppointment
+(Xác nhận lịch hẹn) as ConfirmAppointment
+(Từ chối lịch hẹn) as RejectAppointment
+(Quản lý thiết bị) as ManageEquipment
+(Thêm thiết bị mới) as AddEquipment
+(Cập nhật thông tin thiết bị) as UpdateEquipment
+(Quản lý bảo trì) as ManageMaintenance
+(Ghi nhận bảo trì) as LogMaintenance
+
+' Thêm các use case về gói tập
+(Đăng ký gói tập) as RegisterSubscription
+(Yêu cầu hủy gói tập) as RequestSubscriptionCancellation
+(Xử lý yêu cầu hủy gói) as ProcessCancellationRequest
+(Xem gói tập đang sử dụng) as ViewActiveSubscription
+(Xem lịch sử gói tập) as ViewSubscriptionHistory
+(Quản lý thanh toán gói tập) as ManagePayments
+' Relationships
+Admin --> Login
+Admin --> Logout
+Admin --> ViewDashboard
+Admin --> ManageAttendance
+Admin --> ViewAttendanceHistory
+Admin --> ManageMembers
+Admin --> ManageSubscriptions
+Admin --> ViewProfile
+Admin --> UpdateProfile
+Admin --> ViewStats
+Admin --> ManageAppointments
+Admin --> ManageEquipment
+Admin --> ManageMaintenance
+Admin --> ProcessCancellationRequest
+
+Trainer --> Login
+Trainer --> Logout
+Trainer --> ViewDashboard
+Trainer --> ManageAttendance
+Trainer --> ViewAttendanceHistory
+Trainer --> ViewProfile
+Trainer --> UpdateProfile
+Trainer --> ViewStats
+Trainer --> ManageAppointments
+Trainer --> ConfirmAppointment
+Trainer --> RejectAppointment
+
+Member --> Login
+Member --> Logout
+Member --> ViewDashboard
+Member --> ViewAttendanceHistory
+Member --> ViewProfile
+Member --> UpdateProfile
+Member --> BookAppointment
+Member --> CancelAppointment
+Member --> RegisterSubscription
+Member --> RequestSubscriptionCancellation
+Member --> ViewActiveSubscription
+Member --> ViewSubscriptionHistory
+
+' Include relationships
+ManageAttendance ..> CheckIn : <<include>>
+ManageAttendance ..> CheckOut : <<include>>
+ViewDashboard ..> ViewStats : <<include>>
+ManageEquipment ..> AddEquipment : <<include>>
+ManageEquipment ..> UpdateEquipment : <<include>>
+ManageMaintenance ..> LogMaintenance : <<include>>
+
+' Extend relationships
+ManageSubscriptions ..> RegisterSubscription : <<extend>>
+ManageSubscriptions ..> ProcessCancellationRequest : <<extend>>
+ManageSubscriptions ..> ManagePayments : <<extend>>
+ManageAppointments ..> BookAppointment : <<extend>>
+ManageAppointments ..> CancelAppointment : <<extend>>
+CheckOut ..> CheckIn : <<extend>>
+ViewAttendanceHistory ..> ViewStats : <<extend>>
+CancelAppointment ..> BookAppointment : <<extend>>
+ConfirmAppointment ..> BookAppointment : <<extend>>
+RejectAppointment ..> BookAppointment : <<extend>>
+LogMaintenance ..> ManageEquipment : <<extend>>
+RequestSubscriptionCancellation ..> ViewActiveSubscription : <<extend>>
+
+@enduml

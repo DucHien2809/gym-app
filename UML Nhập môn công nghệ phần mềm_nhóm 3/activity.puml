@@ -1,0 +1,83 @@
+@startuml act
+|Người dùng|
+start
+:Truy cập URL gốc;
+
+|Hệ thống|
+:Kiểm tra trạng thái đăng nhập;
+
+if (Đã đăng nhập?) then (có)
+  :Kiểm tra vai trò người dùng;
+  if (Là Quản trị viên?) then (đúng)
+    :Chuyển đến giao diện Quản trị;
+    :Quản lý người dùng;
+    :Quản lý thiết bị;
+    :Xem báo cáo;
+    :Xử lý yêu cầu hủy;
+  else (khác)
+    if (Là Huấn luyện viên?) then (đúng)
+      :Chuyển đến giao diện Huấn luyện viên;
+      :Quản lý lớp học;
+      :Xem thời khóa biểu;
+      :Theo dõi tiến độ học viên;
+    else (thành viên)
+      :Chuyển đến giao diện Thành viên;
+      :Xem thời khóa biểu;
+      :Đặt lớp học;
+      :Theo dõi tiến độ;
+      :Yêu cầu hủy lớp;
+    endif
+  endif
+else (không)
+  |Người dùng|
+  :Hiển thị trang Đăng nhập/Đăng ký;
+  if (Thao tác?) then (Đăng nhập)
+    :Nhập thông tin đăng nhập;
+    |Hệ thống|
+    :Xác thực thông tin đăng nhập;
+    if (Hợp lệ?) then (có)
+      :Lưu token vào localStorage;
+      :Chuyển đến giao diện phù hợp;
+    else (không)
+      :Hiển thị lỗi đăng nhập;
+      -->[Trở lại] Hiển thị trang Đăng nhập;
+    endif
+  else (Đăng ký)
+    :Nhập thông tin đăng ký;
+    |Hệ thống|
+    :Xác thực thông tin đăng ký;
+    if (Hợp lệ?) then (có)
+      :Tạo tài khoản mới;
+      :Lưu token vào localStorage;
+      :Chuyển đến giao diện phù hợp;
+    else (không)
+      :Hiển thị lỗi đăng ký;
+      -->[Trở lại] Hiển thị trang Đăng ký;
+    endif
+  endif
+endif
+
+|Hệ thống|
+:Kiểm tra thời hạn token;
+if (Token hết hạn?) then (có)
+  :Xóa token;
+  :Chuyển về trang Đăng nhập;
+else (còn hạn)
+  :Làm mới dữ liệu người dùng;
+endif
+
+:Kiểm tra quyền truy cập;
+if (Được phép?) then (có)
+  :Hiển thị nội dung được bảo vệ;
+else (không)
+  :Chuyển về giao diện phù hợp;
+endif
+
+|Người dùng|
+:Đăng xuất;
+|Hệ thống|
+:Xóa token;
+:Chuyển về trang Đăng nhập;
+
+stop
+@enduml

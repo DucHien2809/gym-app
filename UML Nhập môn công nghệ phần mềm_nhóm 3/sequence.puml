@@ -1,0 +1,67 @@
+@startuml sequence
+!theme plain
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+
+actor User
+participant Frontend
+participant AuthContext
+participant API
+participant Backend
+database MongoDB
+
+== Tải Trang Ban Đầu / Kiểm Tra Phiên Đăng Nhập ==
+User -> Frontend: Truy cập đường dẫn gốc ('/')
+Frontend -> AuthContext: Kiểm tra trạng thái đăng nhập
+AuthContext -> Frontend: Kiểm tra token trong localStorage
+
+alt Có token hợp lệ
+    AuthContext -> API: GET /auth/me
+    API -> Backend: Xác minh token
+    Backend -> MongoDB: Truy vấn thông tin người dùng
+    MongoDB --> Backend: Trả về dữ liệu người dùng
+    Backend --> API: Trả về thông tin người dùng
+    API --> AuthContext: Trả về người dùng đã xác thực
+    AuthContext --> Frontend: Cập nhật trạng thái đăng nhập
+    Frontend -> Frontend: Chuyển hướng đến dashboard theo vai trò
+else Không có token hoặc token không hợp lệ
+    Frontend -> Frontend: Chuyển hướng đến trang đăng nhập
+end
+
+== Quy Trình Đăng Nhập ==
+User -> Frontend: Nhập thông tin đăng nhập
+Frontend -> AuthContext: Gọi hàm login()
+AuthContext -> API: POST /auth/login
+API -> Backend: Xử lý yêu cầu đăng nhập
+Backend -> MongoDB: Kiểm tra thông tin đăng nhập
+MongoDB --> Backend: Trả về dữ liệu người dùng
+Backend --> API: Trả về JWT + dữ liệu người dùng
+API --> AuthContext: Trả về phản hồi đăng nhập
+AuthContext -> Frontend: Lưu token vào localStorage
+AuthContext --> Frontend: Cập nhật trạng thái đăng nhập
+Frontend -> Frontend: Chuyển hướng đến dashboard
+
+== Truy Cập Đường Dẫn Bảo Vệ ==
+User -> Frontend: Truy cập trang cần đăng nhập
+Frontend -> AuthContext: Kiểm tra trạng thái đăng nhập
+AuthContext -> API: GET /auth/me
+API -> Backend: Xác minh token
+Backend -> MongoDB: Truy vấn thông tin người dùng
+MongoDB --> Backend: Trả về dữ liệu người dùng
+Backend --> API: Trả về thông tin người dùng
+API --> AuthContext: Trả về người dùng đã xác thực
+AuthContext --> Frontend: Cập nhật trạng thái đăng nhập
+Frontend -> Frontend: Hiển thị nội dung đã bảo vệ
+
+== Quy Trình Đăng Xuất ==
+User -> Frontend: Nhấn nút đăng xuất
+Frontend -> AuthContext: Gọi hàm logout()
+AuthContext -> API: GET /auth/logout
+API -> Backend: Xử lý yêu cầu đăng xuất
+Backend --> API: Xoá phiên làm việc
+API --> AuthContext: Trả về phản hồi thành công
+AuthContext -> Frontend: Xoá token trong localStorage
+AuthContext --> Frontend: Đặt lại trạng thái đăng nhập
+Frontend -> Frontend: Chuyển hướng đến trang đăng nhập
+
+@enduml

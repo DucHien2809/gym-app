@@ -1,0 +1,110 @@
+@startuml object
+
+!theme plain
+skinparam objectAttributeIconSize 0
+skinparam linetype ortho
+skinparam backgroundColor white
+skinparam object {
+    BackgroundColor lightblue
+    BorderColor darkblue
+    BorderThickness 1
+}
+
+' User Objects
+object "user1: User" as user1 {
+    id = "U001"
+    name = "John Doe"
+    email = "john@example.com"
+    role = "member"
+    phone = "0123456789"
+    active = true
+}
+
+object "user2: User" as user2 {
+    id = "U002"
+    name = "Jane Smith"
+    email = "jane@example.com"
+    role = "trainer"
+    phone = "0987654321"
+    active = true
+}
+
+' Membership Object
+object "membership1: Membership" as membership1 {
+    id = "M001"
+    name = "Premium"
+    duration = 12
+    price = 1200.00
+    features = ["Unlimited access", "Personal trainer"]
+    active = true
+}
+
+' Subscription Object
+object "subscription1: Subscription" as subscription1 {
+    id = "S001"
+    startDate = "2024-01-01"
+    endDate = "2024-12-31"
+    paymentStatus = "paid"
+    paymentAmount = 1200.00
+    paymentMethod = "credit_card"
+    active = true
+}
+
+' Attendance Object
+object "attendance1: Attendance" as attendance1 {
+    id = "A001"
+    checkInTime = "2024-03-15 08:00:00"
+    checkOutTime = "2024-03-15 10:00:00"
+    duration = 120
+}
+
+' Equipment Object
+object "equipment1: Equipment" as equipment1 {
+    id = "E001"
+    name = "Treadmill Pro"
+    category = "Cardio"
+    status = "available"
+    location = "Main Floor"
+}
+
+' Maintenance Log Object
+object "maintenanceLog1: MaintenanceLog" as maintenanceLog1 {
+    id = "ML001"
+    maintenanceDate = "2024-03-01"
+    maintenanceType = "Routine"
+    status = "completed"
+    cost = 150.00
+}
+
+' Appointment Object
+object "appointment1: Appointment" as appointment1 {
+    id = "AP001"
+    title = "Personal Training"
+    appointmentDate = "2024-03-20 14:00:00"
+    duration = 60
+    status = "scheduled"
+}
+
+' Cancellation Request Object
+object "cancellationRequest1: SubscriptionCancellationRequest" as cancellationRequest1 {
+    id = "CR001"
+    requestDate = "2024-03-10"
+    status = "pending"
+    reason = "Moving to another city"
+}
+
+' Relationships with labels
+user1 --> subscription1 : "has"
+user1 --> attendance1 : "has"
+user1 --> appointment1 : "schedules"
+user1 --> cancellationRequest1 : "requests"
+
+user2 --> appointment1 : "conducts"
+
+membership1 --> subscription1 : "offers"
+
+equipment1 --> maintenanceLog1 : "has"
+
+subscription1 --> cancellationRequest1 : "has"
+
+@enduml

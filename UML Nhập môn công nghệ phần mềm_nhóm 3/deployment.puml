@@ -1,0 +1,41 @@
+@startuml deploy
+
+!theme plain
+skinparam nodeStyle uml2
+skinparam linetype ortho
+
+' Nodes
+node "Client Browser" {
+    [Web Browser] as Browser
+}
+
+node "Frontend Server" {
+    [Next.js Application] as NextApp
+}
+
+node "Backend Server" {
+    [Express Application] as ExpressApp
+}
+
+node "Database Server" {
+    database "MongoDB" as MongoDB
+}
+
+node "External Services" {
+    [Payment Gateway] as PaymentGateway
+    [Email Service] as EmailService
+}
+
+node "File Storage" {
+    [Upload Directory] as UploadDir
+}
+
+' Relationships
+Browser --> NextApp : HTTPS
+NextApp --> ExpressApp : HTTPS
+ExpressApp --> MongoDB : TCP/IP
+ExpressApp --> PaymentGateway : HTTPS
+ExpressApp --> EmailService : HTTPS
+ExpressApp --> UploadDir : File System
+
+@enduml

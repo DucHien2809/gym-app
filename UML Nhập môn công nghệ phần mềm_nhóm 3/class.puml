@@ -1,0 +1,126 @@
+@startuml class
+
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+class User {
+  +id: String
+  +name: String
+  +email: String
+  +password: String
+  +role: String
+  +phone: String
+  +address: String
+  +dateOfBirth: DateTime
+  +profileImage: String
+  +active: Boolean
+  +createdAt: DateTime
+  +updatedAt: DateTime
+}
+
+class Membership {
+  +id: String
+  +name: String
+  +description: String
+  +duration: Int
+  +price: Float
+  +features: String[]
+  +active: Boolean
+  +createdAt: DateTime
+  +updatedAt: DateTime
+}
+
+class Subscription {
+  +id: String
+  +startDate: DateTime
+  +endDate: DateTime
+  +paymentStatus: String
+  +paymentAmount: Float
+  +paymentDate: DateTime
+  +paymentMethod: String
+  +active: Boolean
+  +notes: String
+  +createdAt: DateTime
+  +updatedAt: DateTime
+}
+
+class Attendance {
+  +id: String
+  +checkInTime: DateTime
+  +checkOutTime: DateTime
+  +duration: Int
+  +notes: String
+  +createdAt: DateTime
+}
+
+class Equipment {
+  +id: String
+  +name: String
+  +description: String
+  +category: String
+  +purchaseDate: DateTime
+  +purchasePrice: Float
+  +manufacturer: String
+  +model: String
+  +serialNumber: String
+  +status: String
+  +location: String
+  +lastMaintenance: DateTime
+  +nextMaintenance: DateTime
+  +image: String
+  +notes: String
+  +createdAt: DateTime
+  +updatedAt: DateTime
+}
+
+class MaintenanceLog {
+  +id: String
+  +maintenanceDate: DateTime
+  +maintenanceType: String
+  +description: String
+  +cost: Float
+  +technician: String
+  +parts: String
+  +status: String
+  +createdAt: DateTime
+  +updatedAt: DateTime
+}
+
+class Appointment {
+  +id: String
+  +title: String
+  +description: String
+  +appointmentDate: DateTime
+  +duration: Int
+  +status: String
+  +notes: String
+  +createdAt: DateTime
+  +updatedAt: DateTime
+}
+
+class SubscriptionCancellationRequest {
+  +id: String
+  +requestDate: DateTime
+  +status: String
+  +reason: String
+  +adminNote: String
+  +refundAmount: Float
+  +processedDate: DateTime
+  +createdAt: DateTime
+  +updatedAt: DateTime
+}
+
+' Relationships
+User ||--o{ Subscription : "1..n"
+User ||--o{ Attendance : "1..n"
+User ||--o{ Appointment : "1..n"
+User ||--o{ SubscriptionCancellationRequest : "1..n"
+
+Membership ||--o{ Subscription : "1..n"
+
+Subscription ||--o{ SubscriptionCancellationRequest : "1..n"
+
+Equipment ||--o{ MaintenanceLog : "1..n"
+
+@enduml
