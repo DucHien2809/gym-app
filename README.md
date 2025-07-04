@@ -255,20 +255,6 @@ PATCH  /api/appointments/:id # Cập nhật appointment
 DELETE /api/appointments/:id # Hủy appointment
 ```
 
-## 🔐 Tài khoản mặc định
-
-Sau khi chạy seed, hệ thống sẽ tạo các tài khoản mặc định:
-
-| Vai trò | Email | Mật khẩu | Mô tả |
-|---------|-------|----------|-------|
-| **Admin** | admin@example.com | admin123 | Quản trị viên hệ thống |
-| **Trainer** | trainer@example.com | admin123 | Huấn luyện viên |
-| **Member** | member@example.com | admin123 | Thành viên thường |
-
-## 🖼 Screenshots
-
-*Thêm screenshots của ứng dụng ở đây*
-
 ## 🤝 Đóng góp
 
 1. Fork dự án
@@ -284,9 +270,8 @@ Dự án này được phân phối dưới giấy phép MIT. Xem file `LICENSE`
 ## 📞 Liên hệ
 
 - **Team**: SE104 - Nhóm 3
-- **Email**: [your-email@example.com]
-- **GitHub**: [repository-link]
+- **Email**: 23520460@gm.uit.edu.vn
 
 ---
 
-⭐ **Nếu dự án này hữu ích, hãy cho chúng tôi một star!** ⭐ 
+⭐ **Nếu dự án này hữu ích, hãy cho tụi mình một star!** ⭐ 
