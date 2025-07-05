@@ -1,0 +1,157 @@
+@startuml equipment_management_sequence
+!theme plain
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+
+actor Admin
+participant "Frontend\n(Equipment Page)" as Frontend
+participant "AuthContext" as AuthContext
+participant "API Service" as API
+participant "Backend\n(equipment.controller.js)" as EquipmentBackend
+participant "Backend\n(maintenance.controller.js)" as MaintenanceBackend
+database "MongoDB\n(Prisma)" as MongoDB
+
+== Quản Lý Thiết Bị (Admin) ==
+
+== Tải Danh Sách Thiết Bị ==
+Admin -> Frontend: Truy cập trang quản lý thiết bị
+Frontend -> AuthContext: Kiểm tra quyền admin
+AuthContext -> Frontend: Xác nhận quyền truy cập
+
+Frontend -> API: GET /equipment (với params: search, category, status, page, limit)
+API -> EquipmentBackend: Xử lý yêu cầu lấy equipment
+EquipmentBackend -> MongoDB: Truy vấn equipment với filter và pagination
+MongoDB --> EquipmentBackend: Trả về danh sách equipment
+EquipmentBackend --> API: Trả về equipment với meta pagination
+API --> Frontend: Hiển thị danh sách thiết bị
+
+== Thêm Thiết Bị Mới ==
+Admin -> Frontend: Nhấn "Thêm Thiết Bị"
+Frontend -> Frontend: Hiển thị form thêm thiết bị
+
+Admin -> Frontend: Nhập thông tin thiết bị và chọn hình ảnh
+Frontend -> Frontend: Xử lý hình ảnh (resize, convert to base64)
+
+Admin -> Frontend: Nhấn "Lưu"
+Frontend -> API: POST /equipment (equipment data + imageBase64)
+API -> EquipmentBackend: Xử lý yêu cầu tạo equipment
+
+alt Thiếu trường bắt buộc
+    EquipmentBackend --> API: Trả về lỗi 400 "Missing required fields"
+    API --> Frontend: Hiển thị lỗi "Vui lòng điền đầy đủ thông tin"
+else Tạo thiết bị thành công
+    EquipmentBackend -> MongoDB: Tạo equipment mới
+    MongoDB --> EquipmentBackend: Xác nhận tạo thành công
+    EquipmentBackend --> API: Trả về thông tin equipment
+    API --> Frontend: Hiển thị thông báo thành công
+    Frontend -> Frontend: Chuyển hướng về danh sách thiết bị
+end
+
+== Xem Chi Tiết Thiết Bị ==
+Admin -> Frontend: Chọn thiết bị để xem chi tiết
+Frontend -> API: GET /equipment/{id}
+API -> EquipmentBackend: Xử lý yêu cầu lấy equipment theo ID
+EquipmentBackend -> MongoDB: Truy vấn equipment với include maintenanceLogs
+MongoDB --> EquipmentBackend: Trả về equipment và maintenance logs
+EquipmentBackend --> API: Trả về thông tin chi tiết equipment
+API --> Frontend: Hiển thị chi tiết thiết bị và lịch sử bảo trì
+
+== Cập Nhật Thiết Bị ==
+Admin -> Frontend: Chọn thiết bị và nhấn "Sửa"
+Frontend -> Frontend: Hiển thị form chỉnh sửa với dữ liệu hiện tại
+
+Admin -> Frontend: Cập nhật thông tin và nhấn "Lưu"
+Frontend -> API: PATCH /equipment/{id} (updated data)
+API -> EquipmentBackend: Xử lý yêu cầu cập nhật equipment
+
+alt Equipment không tồn tại
+    EquipmentBackend -> MongoDB: Kiểm tra equipment tồn tại
+    MongoDB --> EquipmentBackend: Trả về null
+    EquipmentBackend --> API: Trả về lỗi 404 "Equipment not found"
+    API --> Frontend: Hiển thị lỗi "Không tìm thấy thiết bị"
+else Cập nhật thành công
+    EquipmentBackend -> MongoDB: Cập nhật equipment
+    MongoDB --> EquipmentBackend: Xác nhận cập nhật thành công
+    EquipmentBackend --> API: Trả về equipment đã cập nhật
+    API --> Frontend: Hiển thị thông báo thành công
+end
+
+== Xóa Thiết Bị ==
+Admin -> Frontend: Chọn thiết bị và nhấn "Xóa"
+Frontend -> Frontend: Hiển thị confirm dialog
+
+alt Admin xác nhận xóa
+    Frontend -> API: DELETE /equipment/{id}
+    API -> EquipmentBackend: Xử lý yêu cầu xóa equipment
+    
+    alt Equipment không tồn tại
+        EquipmentBackend -> MongoDB: Kiểm tra equipment tồn tại
+        MongoDB --> EquipmentBackend: Trả về null
+        EquipmentBackend --> API: Trả về lỗi 404 "Equipment not found"
+        API --> Frontend: Hiển thị lỗi "Không tìm thấy thiết bị"
+    else Xóa thành công
+        EquipmentBackend -> MongoDB: Xóa maintenance logs liên quan
+        MongoDB --> EquipmentBackend: Xác nhận xóa maintenance logs
+        EquipmentBackend -> MongoDB: Xóa equipment
+        MongoDB --> EquipmentBackend: Xác nhận xóa equipment
+        EquipmentBackend --> API: Trả về kết quả xóa thành công
+        API --> Frontend: Hiển thị thông báo xóa thành công
+        Frontend -> Frontend: Refresh danh sách thiết bị
+    end
+end
+
+== Quản Lý Bảo Trì ==
+
+== Thêm Lịch Sử Bảo Trì ==
+Admin -> Frontend: Chọn thiết bị và nhấn "Thêm bảo trì"
+Frontend -> Frontend: Hiển thị form thêm maintenance log
+
+Admin -> Frontend: Nhập thông tin bảo trì và nhấn "Lưu"
+Frontend -> API: POST /equipment/{equipmentId}/maintenance (maintenance data)
+API -> MaintenanceBackend: Xử lý yêu cầu tạo maintenance log
+
+alt Thiếu thông tin bắt buộc
+    MaintenanceBackend --> API: Trả về lỗi 400 "Missing required fields"
+    API --> Frontend: Hiển thị lỗi "Vui lòng điền đầy đủ thông tin"
+else Equipment không tồn tại
+    MaintenanceBackend -> MongoDB: Kiểm tra equipment tồn tại
+    MongoDB --> MaintenanceBackend: Trả về null
+    MaintenanceBackend --> API: Trả về lỗi 404 "Equipment not found"
+    API --> Frontend: Hiển thị lỗi "Không tìm thấy thiết bị"
+else Tạo maintenance log thành công
+    MaintenanceBackend -> MongoDB: Tạo maintenance log
+    MongoDB --> MaintenanceBackend: Xác nhận tạo thành công
+    MaintenanceBackend -> MongoDB: Cập nhật lastMaintenance và status của equipment
+    MongoDB --> MaintenanceBackend: Xác nhận cập nhật equipment
+    MaintenanceBackend --> API: Trả về thông tin maintenance log
+    API --> Frontend: Hiển thị thông báo thành công
+end
+
+== Xem Lịch Sử Bảo Trì ==
+Admin -> Frontend: Chọn thiết bị để xem lịch sử bảo trì
+Frontend -> API: GET /equipment/{equipmentId}/maintenance (với params: status, page, limit)
+API -> MaintenanceBackend: Xử lý yêu cầu lấy maintenance logs
+MaintenanceBackend -> MongoDB: Truy vấn maintenance logs với filter và pagination
+MongoDB --> MaintenanceBackend: Trả về danh sách maintenance logs
+MaintenanceBackend --> API: Trả về maintenance logs với meta pagination
+API --> Frontend: Hiển thị lịch sử bảo trì
+
+== Cập Nhật Lịch Sử Bảo Trì ==
+Admin -> Frontend: Chọn maintenance log và nhấn "Sửa"
+Frontend -> API: PATCH /equipment/maintenance/{id} (updated data)
+API -> MaintenanceBackend: Xử lý yêu cầu cập nhật maintenance log
+MaintenanceBackend -> MongoDB: Cập nhật maintenance log
+MongoDB --> MaintenanceBackend: Xác nhận cập nhật thành công
+MaintenanceBackend --> API: Trả về maintenance log đã cập nhật
+API --> Frontend: Hiển thị thông báo thành công
+
+== Xóa Lịch Sử Bảo Trì ==
+Admin -> Frontend: Chọn maintenance log và nhấn "Xóa"
+Frontend -> API: DELETE /equipment/maintenance/{id}
+API -> MaintenanceBackend: Xử lý yêu cầu xóa maintenance log
+MaintenanceBackend -> MongoDB: Xóa maintenance log
+MongoDB --> MaintenanceBackend: Xác nhận xóa thành công
+MaintenanceBackend --> API: Trả về kết quả xóa thành công
+API --> Frontend: Hiển thị thông báo xóa thành công
+
+@enduml

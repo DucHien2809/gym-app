@@ -1,0 +1,124 @@
+@startuml membership_subscription_sequence
+!theme plain
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+
+actor Member
+actor Admin
+participant "Frontend\n(Membership Page)" as Frontend
+participant "AuthContext" as AuthContext
+participant "API Service" as API
+participant "Backend\n(membership.controller.js)" as MembershipBackend
+participant "Backend\n(subscription.controller.js)" as SubscriptionBackend
+database "MongoDB\n(Prisma)" as MongoDB
+
+== Quản Lý Gói Tập (Admin) ==
+
+== Tạo Gói Tập Mới ==
+Admin -> Frontend: Truy cập trang quản lý gói tập
+Frontend -> AuthContext: Kiểm tra quyền admin
+AuthContext -> Frontend: Xác nhận quyền truy cập
+
+Admin -> Frontend: Nhập thông tin gói tập mới
+Frontend -> API: POST /memberships (membership data)
+API -> MembershipBackend: Xử lý yêu cầu tạo gói tập
+MembershipBackend -> MongoDB: Tạo membership mới
+MongoDB --> MembershipBackend: Xác nhận tạo thành công
+MembershipBackend --> API: Trả về thông tin gói tập
+API --> Frontend: Hiển thị thông báo thành công
+
+== Cập Nhật Gói Tập ==
+Admin -> Frontend: Chọn gói tập và nhấn "Sửa"
+Frontend -> API: PATCH /memberships/{id} (updated data)
+API -> MembershipBackend: Xử lý yêu cầu cập nhật
+MembershipBackend -> MongoDB: Cập nhật membership
+MongoDB --> MembershipBackend: Xác nhận cập nhật thành công
+MembershipBackend --> API: Trả về gói tập đã cập nhật
+API --> Frontend: Hiển thị thông báo thành công
+
+== Xóa Gói Tập ==
+Admin -> Frontend: Chọn gói tập và nhấn "Xóa"
+Frontend -> API: DELETE /memberships/{id}
+API -> MembershipBackend: Xử lý yêu cầu xóa
+MembershipBackend -> MongoDB: Cập nhật active = false
+MongoDB --> MembershipBackend: Xác nhận cập nhật thành công
+MembershipBackend --> API: Trả về kết quả xóa
+API --> Frontend: Hiển thị thông báo thành công
+
+== Đăng Ký Gói Tập (Member) ==
+
+== Xem Danh Sách Gói Tập ==
+Member -> Frontend: Truy cập trang gói tập
+Frontend -> AuthContext: Kiểm tra quyền member
+AuthContext -> Frontend: Xác nhận quyền truy cập
+
+Frontend -> API: GET /memberships
+API -> MembershipBackend: Xử lý yêu cầu lấy gói tập
+MembershipBackend -> MongoDB: Truy vấn memberships active
+MongoDB --> MembershipBackend: Trả về danh sách gói tập
+MembershipBackend --> API: Trả về danh sách gói tập
+API --> Frontend: Hiển thị danh sách gói tập
+
+== Đăng Ký Gói Tập ==
+Member -> Frontend: Chọn gói tập và nhấn "Đăng ký"
+Frontend -> API: POST /subscriptions (subscription data)
+API -> SubscriptionBackend: Xử lý yêu cầu đăng ký
+
+SubscriptionBackend -> MongoDB: Kiểm tra member tồn tại
+MongoDB --> SubscriptionBackend: Trả về thông tin member
+
+alt Member không tồn tại
+    SubscriptionBackend --> API: Trả về lỗi 404
+    API --> Frontend: Hiển thị lỗi "Không tìm thấy thành viên"
+else Gói tập không tồn tại
+    SubscriptionBackend -> MongoDB: Kiểm tra membership tồn tại
+    MongoDB --> SubscriptionBackend: Trả về null
+    SubscriptionBackend --> API: Trả về lỗi 404
+    API --> Frontend: Hiển thị lỗi "Không tìm thấy gói tập"
+else Đăng ký thành công
+    SubscriptionBackend -> SubscriptionBackend: Tính ngày kết thúc (startDate + duration)
+    SubscriptionBackend -> MongoDB: Tạo subscription mới
+    MongoDB --> SubscriptionBackend: Xác nhận tạo thành công
+    SubscriptionBackend --> API: Trả về thông tin subscription
+    API --> Frontend: Hiển thị thông báo thành công
+end
+
+== Quản Lý Đăng Ký (Admin) ==
+
+== Xem Danh Sách Đăng Ký ==
+Admin -> Frontend: Truy cập trang quản lý đăng ký
+Frontend -> API: GET /subscriptions
+API -> SubscriptionBackend: Xử lý yêu cầu lấy subscriptions
+SubscriptionBackend -> MongoDB: Truy vấn subscriptions với include member, membership
+MongoDB --> SubscriptionBackend: Trả về danh sách subscriptions
+SubscriptionBackend --> API: Trả về danh sách subscriptions
+API --> Frontend: Hiển thị danh sách đăng ký
+
+== Cập Nhật Trạng Thái Thanh Toán ==
+Admin -> Frontend: Chọn subscription và cập nhật payment status
+Frontend -> API: PATCH /subscriptions/{id} (payment data)
+API -> SubscriptionBackend: Xử lý yêu cầu cập nhật payment
+SubscriptionBackend -> MongoDB: Cập nhật payment status, method, date
+MongoDB --> SubscriptionBackend: Xác nhận cập nhật thành công
+SubscriptionBackend --> API: Trả về subscription đã cập nhật
+API --> Frontend: Hiển thị thông báo thành công
+
+== Hủy Đăng Ký ==
+Admin -> Frontend: Chọn subscription và nhấn "Hủy"
+Frontend -> API: DELETE /subscriptions/{id}
+API -> SubscriptionBackend: Xử lý yêu cầu hủy
+SubscriptionBackend -> MongoDB: Xóa subscription
+MongoDB --> SubscriptionBackend: Xác nhận xóa thành công
+SubscriptionBackend --> API: Trả về kết quả hủy
+API --> Frontend: Hiển thị thông báo thành công
+
+== Xem Đăng Ký Của Member ==
+Member -> Frontend: Truy cập trang subscriptions cá nhân
+Frontend -> API: GET /subscriptions/member/{memberId}
+API -> SubscriptionBackend: Xử lý yêu cầu lấy subscriptions của member
+SubscriptionBackend -> MongoDB: Truy vấn subscriptions theo memberId
+MongoDB --> SubscriptionBackend: Trả về subscriptions của member
+SubscriptionBackend --> API: Trả về subscriptions của member
+API --> Frontend: Hiển thị danh sách đăng ký cá nhân
+
+@enduml

@@ -1,0 +1,125 @@
+// Use DBML format for dbdiagram.io
+Project "gym-management" {
+  database_type: "MongoDB"
+  note: "Converted from PlantUML"
+}
+
+Table User {
+  id ObjectId [pk]
+  name String
+  email String [unique]
+  password String
+  role String
+  phone String
+  address String
+  dateOfBirth DateTime
+  profileImage String
+  active Boolean
+  createdAt DateTime
+  updatedAt DateTime
+}
+
+Table Membership {
+  id ObjectId [pk]
+  name String [unique]
+  description String
+  duration Int
+  price Float
+  features String[]
+  active Boolean
+  createdAt DateTime
+  updatedAt DateTime
+}
+
+Table Subscription {
+  id ObjectId [pk]
+  memberId ObjectId [ref: > User.id]
+  membershipId ObjectId [ref: > Membership.id]
+  startDate DateTime
+  endDate DateTime
+  paymentStatus String
+  paymentAmount Float
+  paymentDate DateTime
+  paymentMethod String
+  active Boolean
+  notes String
+  createdById ObjectId [ref: > User.id]
+  createdAt DateTime
+  updatedAt DateTime
+}
+
+Table Attendance {
+  id ObjectId [pk]
+  memberId ObjectId [ref: > User.id]
+  checkInTime DateTime
+  checkOutTime DateTime
+  duration Int
+  notes String
+  createdById ObjectId [ref: > User.id]
+  createdAt DateTime
+}
+
+Table Equipment {
+  id ObjectId [pk]
+  name String
+  description String
+  category String
+  purchaseDate DateTime
+  purchasePrice Float
+  manufacturer String
+  model String
+  serialNumber String
+  status String
+  location String
+  lastMaintenance DateTime
+  nextMaintenance DateTime
+  imageBase64 String
+  notes String
+  createdById ObjectId [ref: > User.id]
+  createdAt DateTime
+  updatedAt DateTime
+}
+
+Table MaintenanceLog {
+  id ObjectId [pk]
+  equipmentId ObjectId [ref: > Equipment.id]
+  maintenanceDate DateTime
+  maintenanceType String
+  description String
+  cost Float
+  technician String
+  parts String
+  status String
+  createdById ObjectId [ref: > User.id]
+  createdAt DateTime
+  updatedAt DateTime
+}
+
+Table SubscriptionCancellationRequest {
+  id ObjectId [pk]
+  subscriptionId ObjectId [ref: > Subscription.id]
+  memberId ObjectId [ref: > User.id]
+  requestDate DateTime
+  status String
+  reason String
+  adminNote String
+  refundAmount Float
+  processedById ObjectId [ref: > User.id]
+  processedDate DateTime
+  createdAt DateTime
+  updatedAt DateTime
+}
+
+Table Appointment {
+  id ObjectId [pk]
+  memberId ObjectId [ref: > User.id]
+  trainerId ObjectId [ref: > User.id]
+  title String
+  description String
+  appointmentDate DateTime
+  duration Int
+  status String
+  notes String
+  createdAt DateTime
+  updatedAt DateTime
+}

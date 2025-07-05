@@ -1,0 +1,58 @@
+@startuml
+|Quản trị viên|
+start
+:Truy cập chức năng quản lý thiết bị;
+:Chọn thao tác;
+
+split
+  :Thêm thiết bị;
+  :Nhập thông tin thiết bị mới;
+  |Hệ thống|
+  :Kiểm tra thông tin;
+  if (Hợp lệ?) then (có)
+    :Thêm thiết bị vào hệ thống;
+    :Hiển thị thông báo thành công;
+  else (không)
+    :Hiển thị lỗi nhập liệu;
+  endif
+endsplit
+
+split
+  :Sửa thiết bị;
+  :Chọn thiết bị cần sửa;
+  :Nhập thông tin mới;
+  |Hệ thống|
+  :Kiểm tra thông tin;
+  if (Hợp lệ?) then (có)
+    :Cập nhật thông tin thiết bị;
+    :Hiển thị thông báo thành công;
+  else (không)
+    :Hiển thị lỗi nhập liệu;
+  endif
+endsplit
+
+split
+  :Xóa thiết bị;
+  :Chọn thiết bị cần xóa;
+  |Hệ thống|
+  :Kiểm tra thiết bị có đang sử dụng không;
+  if (Không sử dụng?) then (có)
+    :Xóa thiết bị khỏi hệ thống;
+    :Hiển thị thông báo thành công;
+  else (đang sử dụng)
+    :Hiển thị cảnh báo không thể xóa;
+  endif
+endsplit
+
+split
+  :Ghi nhận bảo trì;
+  :Chọn thiết bị cần bảo trì;
+  :Nhập thông tin bảo trì;
+  |Hệ thống|
+  :Cập nhật trạng thái thiết bị thành "Đang bảo trì";
+  :Lưu thông tin bảo trì;
+  :Hiển thị thông báo thành công;
+endsplit
+
+stop
+@enduml

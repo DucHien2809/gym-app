@@ -1,0 +1,140 @@
+@startuml appointment_sequence
+!theme plain
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+
+actor Member
+actor Trainer
+participant "Frontend\n(Member Appointments)" as MemberFrontend
+participant "Frontend\n(Trainer Appointments)" as TrainerFrontend
+participant "AuthContext" as AuthContext
+participant "API Service" as API
+participant "Backend\n(appointment.controller.js)" as Backend
+participant "Backend\n(user.controller.js)" as UserBackend
+database "MongoDB\n(Prisma)" as MongoDB
+
+== Member Đặt Lịch Hẹn ==
+
+== Tải Trang Lịch Hẹn (Member) ==
+Member -> MemberFrontend: Truy cập trang appointments
+MemberFrontend -> AuthContext: Kiểm tra quyền member
+AuthContext -> MemberFrontend: Xác nhận quyền truy cập
+
+MemberFrontend -> API: GET /appointments/member/{memberId}
+API -> Backend: Xử lý yêu cầu lấy appointments của member
+Backend -> MongoDB: Truy vấn appointments theo memberId
+MongoDB --> Backend: Trả về danh sách appointments
+Backend --> API: Trả về appointments với thông tin trainer
+API --> MemberFrontend: Hiển thị danh sách lịch hẹn
+
+MemberFrontend -> API: GET /users/trainers
+API -> UserBackend: Xử lý yêu cầu lấy danh sách trainers
+UserBackend -> MongoDB: Truy vấn users với role='trainer'
+MongoDB --> UserBackend: Trả về danh sách trainers
+UserBackend --> API: Trả về danh sách trainers
+API --> MemberFrontend: Hiển thị danh sách trainers để chọn
+
+== Tạo Lịch Hẹn Mới ==
+Member -> MemberFrontend: Chọn trainer và nhập thông tin lịch hẹn
+MemberFrontend -> API: POST /appointments (appointment data)
+API -> Backend: Xử lý yêu cầu tạo appointment
+
+Backend -> MongoDB: Kiểm tra member tồn tại
+MongoDB --> Backend: Trả về thông tin member
+
+alt Member không tồn tại
+    Backend --> API: Trả về lỗi 404 "Member not found"
+    API --> MemberFrontend: Hiển thị lỗi "Không tìm thấy thành viên"
+else Trainer không tồn tại
+    Backend -> MongoDB: Kiểm tra trainer tồn tại
+    MongoDB --> Backend: Trả về null
+    Backend --> API: Trả về lỗi 404 "Trainer not found"
+    API --> MemberFrontend: Hiển thị lỗi "Không tìm thấy huấn luyện viên"
+else Có xung đột lịch hẹn
+    Backend -> MongoDB: Kiểm tra xung đột thời gian
+    MongoDB --> Backend: Trả về appointments xung đột
+    Backend --> API: Trả về lỗi 400 "Trainer already has appointment"
+    API --> MemberFrontend: Hiển thị lỗi "Huấn luyện viên đã có lịch hẹn"
+else Tạo lịch hẹn thành công
+    Backend -> MongoDB: Tạo appointment mới với status='pending'
+    MongoDB --> Backend: Xác nhận tạo thành công
+    Backend --> API: Trả về thông tin appointment
+    API --> MemberFrontend: Hiển thị thông báo thành công
+    MemberFrontend -> MemberFrontend: Cập nhật danh sách lịch hẹn
+end
+
+== Hủy Lịch Hẹn (Member) ==
+Member -> MemberFrontend: Chọn lịch hẹn và nhấn "Hủy"
+MemberFrontend -> API: PATCH /appointments/{id} (status: 'cancelled')
+API -> Backend: Xử lý yêu cầu cập nhật status
+Backend -> MongoDB: Cập nhật appointment status
+MongoDB --> Backend: Xác nhận cập nhật thành công
+Backend --> API: Trả về appointment đã cập nhật
+API --> MemberFrontend: Hiển thị thông báo hủy thành công
+MemberFrontend -> MemberFrontend: Cập nhật trạng thái lịch hẹn
+
+== Trainer Quản Lý Lịch Hẹn ==
+
+== Tải Trang Lịch Hẹn (Trainer) ==
+Trainer -> TrainerFrontend: Truy cập trang appointments
+TrainerFrontend -> AuthContext: Kiểm tra quyền trainer
+AuthContext -> TrainerFrontend: Xác nhận quyền truy cập
+
+TrainerFrontend -> API: GET /appointments/trainer/{trainerId}
+API -> Backend: Xử lý yêu cầu lấy appointments của trainer
+Backend -> MongoDB: Truy vấn appointments theo trainerId
+MongoDB --> Backend: Trả về danh sách appointments
+Backend --> API: Trả về appointments với thông tin member
+API --> TrainerFrontend: Hiển thị danh sách lịch hẹn
+
+== Chấp Nhận/Từ Chối Lịch Hẹn ==
+Trainer -> TrainerFrontend: Chọn lịch hẹn và nhấn "Chấp nhận/Từ chối"
+TrainerFrontend -> API: PATCH /appointments/{id} (status: 'accepted'/'rejected')
+API -> Backend: Xử lý yêu cầu cập nhật status
+
+alt Status không hợp lệ
+    Backend --> API: Trả về lỗi 400 "Invalid status value"
+    API --> TrainerFrontend: Hiển thị lỗi "Trạng thái không hợp lệ"
+else Appointment không tồn tại
+    Backend -> MongoDB: Kiểm tra appointment tồn tại
+    MongoDB --> Backend: Trả về null
+    Backend --> API: Trả về lỗi 404 "Appointment not found"
+    API --> TrainerFrontend: Hiển thị lỗi "Không tìm thấy lịch hẹn"
+else Cập nhật thành công
+    Backend -> MongoDB: Cập nhật appointment status và notes
+    MongoDB --> Backend: Xác nhận cập nhật thành công
+    Backend --> API: Trả về appointment đã cập nhật
+    API --> TrainerFrontend: Hiển thị thông báo thành công
+    TrainerFrontend -> TrainerFrontend: Cập nhật trạng thái lịch hẹn
+end
+
+== Đánh Dấu Hoàn Thành ==
+Trainer -> TrainerFrontend: Chọn lịch hẹn và nhấn "Hoàn thành"
+TrainerFrontend -> API: PATCH /appointments/{id} (status: 'completed')
+API -> Backend: Xử lý yêu cầu cập nhật status
+Backend -> MongoDB: Cập nhật appointment status
+MongoDB --> Backend: Xác nhận cập nhật thành công
+Backend --> API: Trả về appointment đã cập nhật
+API --> TrainerFrontend: Hiển thị thông báo thành công
+TrainerFrontend -> TrainerFrontend: Cập nhật trạng thái lịch hẹn
+
+== Xem Lịch Hẹn Tất Cả (Admin) ==
+Admin -> AdminFrontend: Truy cập trang quản lý appointments
+AdminFrontend -> API: GET /appointments
+API -> Backend: Xử lý yêu cầu lấy tất cả appointments
+Backend -> MongoDB: Truy vấn tất cả appointments với include member, trainer
+MongoDB --> Backend: Trả về danh sách appointments
+Backend --> API: Trả về appointments với thông tin đầy đủ
+API --> AdminFrontend: Hiển thị danh sách tất cả lịch hẹn
+
+== Xóa Lịch Hẹn ==
+Admin -> AdminFrontend: Chọn lịch hẹn và nhấn "Xóa"
+AdminFrontend -> API: DELETE /appointments/{id}
+API -> Backend: Xử lý yêu cầu xóa appointment
+Backend -> MongoDB: Xóa appointment
+MongoDB --> Backend: Xác nhận xóa thành công
+Backend --> API: Trả về kết quả xóa
+API --> AdminFrontend: Hiển thị thông báo xóa thành công
+AdminFrontend -> AdminFrontend: Cập nhật danh sách lịch hẹn
+
+@enduml

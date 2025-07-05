@@ -1,118 +1,84 @@
-@startuml state
-left to right direction
-skinparam state {
-    BackgroundColor LightBlue
-    BorderColor Gray
-    FontColor Black
-}
+@startuml entity-states
 
-' Trạng thái chung
-state "Chưa xác thực" as UA
-state "Đang xác thực" as AUTH
-state "Lỗi đăng nhập" as ERR
+' ===== SUBSCRIPTION STATE DIAGRAM =====
+title Subscription State Diagram
 
-' Bảng điều khiển Quản trị viên
-state "Bảng điều khiển Quản trị viên" as AD {
-    state "Xem thống kê" as AD_STATS
-    state "Quản lý người dùng" as AD_USERS
-    state "Quản lý hội viên" as AD_MEMBERSHIPS
-    state "Quản lý gói đăng ký" as AD_SUBS
-    state "Quản lý thiết bị" as AD_EQUIP
-    state "Xem báo cáo" as AD_REPORTS
-}
+state "Chưa đăng ký" as SUB_NOT_SUBSCRIBED
+state "Đang xử lý thanh toán" as SUB_PAYMENT_PENDING  
+state "Thanh toán thất bại" as SUB_PAYMENT_FAILED
+state "Đã kích hoạt" as SUB_ACTIVE
+state "Sắp hết hạn" as SUB_EXPIRING_SOON
+state "Đã hết hạn" as SUB_EXPIRED
+state "Đã hủy" as SUB_CANCELLED
 
-' Bảng điều khiển Huấn luyện viên
-state "Bảng điều khiển Huấn luyện viên" as TD {
-    state "Xem lịch tập" as TD_SCHEDULE
-    state "Quản lý lịch hẹn" as TD_APPOINTMENTS
-    state "Quản lý điểm danh" as TD_ATTENDANCE
-    state "Xem hội viên" as TD_MEMBERS
-}
+SUB_NOT_SUBSCRIBED --> SUB_PAYMENT_PENDING : Đăng ký gói
+SUB_PAYMENT_PENDING --> SUB_ACTIVE : Thanh toán thành công
+SUB_PAYMENT_PENDING --> SUB_PAYMENT_FAILED : Thanh toán thất bại
+SUB_PAYMENT_FAILED --> SUB_PAYMENT_PENDING : Thử lại
+SUB_ACTIVE --> SUB_EXPIRING_SOON : Gần hết hạn
+SUB_EXPIRING_SOON --> SUB_EXPIRED : Hết hạn
+SUB_EXPIRING_SOON --> SUB_ACTIVE : Gia hạn
+SUB_EXPIRED --> SUB_ACTIVE : Gia hạn
+SUB_ACTIVE --> SUB_CANCELLED : Hủy gói
 
-' Bảng điều khiển Hội viên
-state "Bảng điều khiển Hội viên" as MD {
-    state "Xem hồ sơ" as MD_PROFILE
-    state "Quản lý gói đăng ký" as MD_SUBS
-    state "Đặt lịch hẹn" as MD_BOOK
-    state "Xem lịch sử" as MD_HISTORY
-}
+' ===== ATTENDANCE STATE DIAGRAM =====
+newpage
+title Attendance State Diagram
 
-' Chuyển trạng thái từ Chưa xác thực
-UA --> AUTH : Thử đăng nhập
-AUTH --> AD : Đăng nhập thành công (Quản trị viên)
-AUTH --> TD : Đăng nhập thành công (Huấn luyện viên)
-AUTH --> MD : Đăng nhập thành công (Hội viên)
-AUTH --> ERR : Đăng nhập thất bại
+state "Chưa điểm danh" as ATT_NOT_CHECKED_IN
+state "Đã điểm danh vào" as ATT_CHECKED_IN
+state "Đã điểm danh ra" as ATT_CHECKED_OUT
+state "Quá giờ" as ATT_OVERTIME
 
-' Quản trị viên
-AD --> AD_STATS : Xem thống kê
-AD --> AD_USERS : Quản lý người dùng
-AD --> AD_MEMBERSHIPS : Quản lý hội viên
-AD --> AD_SUBS : Quản lý gói đăng ký
-AD --> AD_EQUIP : Quản lý thiết bị
-AD --> AD_REPORTS : Xem báo cáo
-AD --> UA : Đăng xuất
+ATT_NOT_CHECKED_IN --> ATT_CHECKED_IN : Check-in
+ATT_CHECKED_IN --> ATT_CHECKED_OUT : Check-out
+ATT_CHECKED_IN --> ATT_OVERTIME : Quá giờ làm việc
+ATT_OVERTIME --> ATT_CHECKED_OUT : Check-out muộn
 
-' Huấn luyện viên
-TD --> TD_SCHEDULE : Xem lịch tập
-TD --> TD_APPOINTMENTS : Quản lý lịch hẹn
-TD --> TD_ATTENDANCE : Quản lý điểm danh
-TD --> TD_MEMBERS : Xem hội viên
-TD --> UA : Đăng xuất
+' ===== EQUIPMENT STATE DIAGRAM =====
+newpage
+title Equipment State Diagram
 
-' Hội viên
-MD --> MD_PROFILE : Xem hồ sơ
-MD --> MD_SUBS : Quản lý gói đăng ký
-MD --> MD_BOOK : Đặt lịch hẹn
-MD --> MD_HISTORY : Xem lịch sử
-MD --> UA : Đăng xuất
+state "Có sẵn" as EQUIP_AVAILABLE
+state "Đang sử dụng" as EQUIP_IN_USE
+state "Bảo trì" as EQUIP_MAINTENANCE
+state "Hỏng" as EQUIP_BROKEN
+state "Nghỉ hưu" as EQUIP_RETIRED
 
-' Trạng thái lỗi
-ERR --> UA : Thử lại
+EQUIP_AVAILABLE --> EQUIP_IN_USE : Sử dụng
+EQUIP_IN_USE --> EQUIP_AVAILABLE : Trả về
+EQUIP_AVAILABLE --> EQUIP_MAINTENANCE : Bảo trì
+EQUIP_MAINTENANCE --> EQUIP_AVAILABLE : Hoàn thành bảo trì
+EQUIP_MAINTENANCE --> EQUIP_BROKEN : Phát hiện hỏng
+EQUIP_BROKEN --> EQUIP_MAINTENANCE : Sửa chữa
+EQUIP_BROKEN --> EQUIP_RETIRED : Không thể sửa
+EQUIP_AVAILABLE --> EQUIP_RETIRED : Nghỉ hưu
 
-' Substate: Quản lý người dùng
-state AD_USERS {
-    [*] --> XemNguoiDung
-    XemNguoiDung --> ThemNguoiDung : Thêm mới
-    XemNguoiDung --> SuaNguoiDung : Chỉnh sửa
-    XemNguoiDung --> XoaNguoiDung : Xóa
-}
+' ===== APPOINTMENT STATE DIAGRAM =====
+newpage
+title Appointment State Diagram
 
-' Substate: Quản lý hội viên
-state AD_MEMBERSHIPS {
-    [*] --> XemHoiVien
-    XemHoiVien --> ThemHoiVien : Thêm mới
-    XemHoiVien --> SuaHoiVien : Chỉnh sửa
-    XemHoiVien --> XoaHoiVien : Xóa
-}
+state "Chờ xác nhận" as APP_PENDING
+state "Đã chấp nhận" as APP_ACCEPTED
+state "Đã từ chối" as APP_REJECTED
+state "Đã hoàn thành" as APP_COMPLETED
+state "Đã hủy" as APP_CANCELLED
 
-' Substate: Quản lý lịch hẹn
-state TD_APPOINTMENTS {
-    [*] --> XemLichHen
-    XemLichHen --> ChapNhanLichHen : Chấp nhận
-    XemLichHen --> TuChoiLichHen : Từ chối
-    XemLichHen --> HoanTatLichHen : Hoàn tất
-}
+APP_PENDING --> APP_ACCEPTED : Trainer chấp nhận
+APP_PENDING --> APP_REJECTED : Trainer từ chối
+APP_PENDING --> APP_CANCELLED : Member hủy
+APP_ACCEPTED --> APP_COMPLETED : Hoàn thành buổi tập
+APP_ACCEPTED --> APP_CANCELLED : Hủy (cả 2 bên)
 
-' Substate: Quản lý điểm danh
-state TD_ATTENDANCE {
-    [*] --> XemDiemDanh
-    XemDiemDanh --> CheckIn : Điểm danh vào
-    XemDiemDanh --> CheckOut : Điểm danh ra
-}
+' ===== CANCELLATION REQUEST STATE DIAGRAM =====
+newpage
+title Cancellation Request State Diagram
 
-' Substate: Quản lý gói đăng ký
-state MD_SUBS {
-    [*] --> XemGoiDangKy
-    XemGoiDangKy --> GiaHan : Gia hạn
-    XemGoiDangKy --> HuyGoi : Hủy
-}
+state "Chờ xử lý" as CANC_PENDING
+state "Đã chấp nhận" as CANC_APPROVED
+state "Đã từ chối" as CANC_REJECTED
 
-' Substate: Đặt lịch hẹn
-state MD_BOOK {
-    [*] --> XemKhungGio
-    XemKhungGio --> ChonHLV : Chọn HLV
-    XemKhungGio --> DatLich : Đặt lịch
-}
+CANC_PENDING --> CANC_APPROVED : Admin chấp nhận
+CANC_PENDING --> CANC_REJECTED : Admin từ chối
 
 @enduml

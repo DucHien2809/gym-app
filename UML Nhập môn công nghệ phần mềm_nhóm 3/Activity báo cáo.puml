@@ -1,0 +1,31 @@
+@startuml
+|Quản trị viên|
+start
+:Truy cập chức năng báo cáo/thống kê;
+
+|Hệ thống|
+:Kiểm tra trạng thái đăng nhập;
+if (Đã đăng nhập?) then (có)
+  :Kiểm tra quyền truy cập báo cáo;
+  if (Có quyền?) then (có)
+    :Hiển thị danh sách loại báo cáo/thống kê;
+    |Quản trị viên|
+    :Chọn loại báo cáo/thống kê cần xem;
+    |Hệ thống|
+    :Truy xuất dữ liệu từ hệ thống;
+    :Tổng hợp và xử lý dữ liệu;
+    :Hiển thị báo cáo/thống kê;
+    |Quản trị viên|
+    :Xem báo cáo/thống kê;
+    :(Tùy chọn) Xuất báo cáo ra file;
+  else (không)
+    |Quản trị viên|
+    :Thông báo không có quyền truy cập;
+  endif
+else (chưa)
+  |Quản trị viên|
+  :Yêu cầu đăng nhập;
+endif
+
+stop
+@enduml

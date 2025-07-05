@@ -1,0 +1,36 @@
+@startuml
+|Thành viên|
+start
+:Truy cập chức năng đăng ký/thanh toán gói tập;
+:Chọn gói tập muốn thanh toán;
+
+|Hệ thống|
+:Kiểm tra trạng thái đăng nhập;
+if (Đã đăng nhập?) then (có)
+  :Kiểm tra quyền thanh toán;
+  if (Được phép?) then (có)
+    :Hiển thị các phương thức thanh toán;
+    |Thành viên|
+    :Chọn phương thức thanh toán;
+    |Hệ thống|
+    :Xác thực thông tin thanh toán;
+    if (Thanh toán hợp lệ?) then (có)
+      :Cập nhật trạng thái gói tập thành "Đã thanh toán";
+      :Ghi nhận lịch sử thanh toán;
+      |Thành viên|
+      :Hiển thị thông báo thanh toán thành công;
+    else (không)
+      |Thành viên|
+      :Hiển thị lỗi/thông báo thanh toán thất bại;
+    endif
+  else (không)
+    |Thành viên|
+    :Thông báo không có quyền thanh toán;
+  endif
+else (chưa)
+  |Thành viên|
+  :Yêu cầu đăng nhập;
+endif
+
+stop
+@enduml

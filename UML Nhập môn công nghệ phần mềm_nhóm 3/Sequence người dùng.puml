@@ -1,0 +1,202 @@
+@startuml user_management_sequence
+!theme plain
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+
+actor Admin
+actor Member
+actor Trainer
+participant "Frontend\n(Admin Users Page)" as AdminFrontend
+participant "Frontend\n(Member Profile Page)" as MemberFrontend
+participant "AuthContext" as AuthContext
+participant "API Service" as API
+participant "Backend\n(user.controller.js)" as UserBackend
+participant "Backend\n(upload.controller.js)" as UploadBackend
+database "MongoDB\n(Prisma)" as MongoDB
+
+== Quản Lý Người Dùng (Admin) ==
+
+== Tải Danh Sách Người Dùng ==
+Admin -> AdminFrontend: Truy cập trang quản lý người dùng
+AdminFrontend -> AuthContext: Kiểm tra quyền admin
+AuthContext -> AdminFrontend: Xác nhận quyền truy cập
+
+AdminFrontend -> API: GET /users
+API -> UserBackend: Xử lý yêu cầu lấy tất cả users
+UserBackend -> MongoDB: Truy vấn users (không bao gồm password)
+MongoDB --> UserBackend: Trả về danh sách users
+UserBackend --> API: Trả về danh sách users
+API --> AdminFrontend: Hiển thị danh sách người dùng
+
+== Tạo Người Dùng Mới ==
+Admin -> AdminFrontend: Nhấn "Thêm người dùng"
+AdminFrontend -> AdminFrontend: Hiển thị form tạo người dùng
+
+Admin -> AdminFrontend: Nhập thông tin người dùng
+AdminFrontend -> API: POST /users (user data)
+API -> UserBackend: Xử lý yêu cầu tạo user
+
+alt Thiếu thông tin bắt buộc
+    UserBackend --> API: Trả về lỗi 400
+    API --> AdminFrontend: Hiển thị lỗi "Thiếu thông tin bắt buộc"
+else Email đã tồn tại
+    UserBackend -> MongoDB: Kiểm tra email tồn tại
+    MongoDB --> UserBackend: Trả về user đã tồn tại
+    UserBackend --> API: Trả về lỗi 400 "Email đã tồn tại"
+    API --> AdminFrontend: Hiển thị lỗi "Email đã được sử dụng"
+else Tạo user thành công
+    UserBackend -> UserBackend: Hash password nếu có
+    UserBackend -> MongoDB: Tạo user mới
+    MongoDB --> UserBackend: Xác nhận tạo thành công
+    UserBackend --> API: Trả về thông tin user (không bao gồm password)
+    API --> AdminFrontend: Hiển thị thông báo thành công
+    AdminFrontend -> AdminFrontend: Refresh danh sách users
+end
+
+== Thay Đổi Vai Trò Người Dùng ==
+Admin -> AdminFrontend: Chọn user và thay đổi role
+AdminFrontend -> API: PATCH /users/{id}/role (new role)
+API -> UserBackend: Xử lý yêu cầu thay đổi role
+
+alt Role không hợp lệ
+    UserBackend --> API: Trả về lỗi 400 "Vai trò không hợp lệ"
+    API --> AdminFrontend: Hiển thị lỗi "Chỉ có thể chuyển đổi giữa member và trainer"
+else User không tồn tại
+    UserBackend -> MongoDB: Kiểm tra user tồn tại
+    MongoDB --> UserBackend: Trả về null
+    UserBackend --> API: Trả về lỗi 404 "Không tìm thấy người dùng"
+    API --> AdminFrontend: Hiển thị lỗi "Không tìm thấy người dùng"
+else User là admin
+    UserBackend -> MongoDB: Kiểm tra user role
+    MongoDB --> UserBackend: Trả về user với role='admin'
+    UserBackend --> API: Trả về lỗi 403 "Không thể thay đổi vai trò của admin"
+    API --> AdminFrontend: Hiển thị lỗi "Không thể thay đổi vai trò của admin"
+else Thay đổi role thành công
+    UserBackend -> MongoDB: Cập nhật role của user
+    MongoDB --> UserBackend: Xác nhận cập nhật thành công
+    UserBackend --> API: Trả về user đã cập nhật
+    API --> AdminFrontend: Hiển thị thông báo thành công
+    AdminFrontend -> AdminFrontend: Refresh danh sách users
+end
+
+== Reset Mật Khẩu Người Dùng ==
+Admin -> AdminFrontend: Chọn user và nhấn "Reset Password"
+AdminFrontend -> AdminFrontend: Hiển thị dialog nhập password mới
+
+Admin -> AdminFrontend: Nhập password mới (hoặc để trống)
+AdminFrontend -> API: POST /users/{id}/reset-password (newPassword)
+API -> UserBackend: Xử lý yêu cầu reset password
+
+alt User không tồn tại
+    UserBackend -> MongoDB: Kiểm tra user tồn tại
+    MongoDB --> UserBackend: Trả về null
+    UserBackend --> API: Trả về lỗi 404 "Không tìm thấy người dùng"
+    API --> AdminFrontend: Hiển thị lỗi "Không tìm thấy người dùng"
+else Password quá ngắn
+    UserBackend --> API: Trả về lỗi 400 "Mật khẩu phải có ít nhất 6 ký tự"
+    API --> AdminFrontend: Hiển thị lỗi "Mật khẩu quá ngắn"
+else Reset password thành công
+    UserBackend -> UserBackend: Hash password mới
+    UserBackend -> MongoDB: Cập nhật password của user
+    MongoDB --> UserBackend: Xác nhận cập nhật thành công
+    UserBackend --> API: Trả về thông báo thành công và password mới
+    API --> AdminFrontend: Hiển thị thông báo thành công với password mới
+end
+
+== Xóa Người Dùng ==
+Admin -> AdminFrontend: Chọn user và nhấn "Xóa"
+AdminFrontend -> AdminFrontend: Hiển thị confirm dialog
+
+alt Admin xác nhận xóa
+    AdminFrontend -> API: DELETE /users/{id}
+    API -> UserBackend: Xử lý yêu cầu xóa user
+    UserBackend -> MongoDB: Xóa user
+    MongoDB --> UserBackend: Xác nhận xóa thành công
+    UserBackend --> API: Trả về kết quả xóa thành công
+    API --> AdminFrontend: Hiển thị thông báo xóa thành công
+    AdminFrontend -> AdminFrontend: Refresh danh sách users
+end
+
+== Quản Lý Hồ Sơ Cá Nhân (Member/Trainer) ==
+
+== Tải Thông Tin Hồ Sơ ==
+Member -> MemberFrontend: Truy cập trang profile
+MemberFrontend -> AuthContext: Kiểm tra quyền truy cập
+AuthContext -> MemberFrontend: Xác nhận quyền truy cập
+
+MemberFrontend -> AuthContext: Lấy thông tin user hiện tại
+AuthContext -> MemberFrontend: Trả về thông tin user
+MemberFrontend -> MemberFrontend: Hiển thị thông tin hồ sơ
+
+== Cập Nhật Thông Tin Cá Nhân ==
+Member -> MemberFrontend: Nhấn "Chỉnh sửa"
+MemberFrontend -> MemberFrontend: Chuyển sang chế độ chỉnh sửa
+
+Member -> MemberFrontend: Cập nhật thông tin cá nhân
+MemberFrontend -> API: PATCH /users/{id} (updated data)
+API -> UserBackend: Xử lý yêu cầu cập nhật user
+
+alt Không có quyền cập nhật
+    UserBackend --> API: Trả về lỗi 403 "Bạn không có quyền thực hiện hành động này"
+    API --> MemberFrontend: Hiển thị lỗi "Không có quyền cập nhật"
+else Cập nhật thành công
+    UserBackend -> MongoDB: Cập nhật thông tin user
+    MongoDB --> UserBackend: Xác nhận cập nhật thành công
+    UserBackend --> API: Trả về user đã cập nhật
+    API --> MemberFrontend: Hiển thị thông báo thành công
+    MemberFrontend -> AuthContext: Cập nhật thông tin user trong context
+end
+
+== Thay Đổi Mật Khẩu ==
+Member -> MemberFrontend: Chọn "Thay đổi mật khẩu"
+MemberFrontend -> MemberFrontend: Hiển thị form thay đổi password
+
+Member -> MemberFrontend: Nhập password hiện tại và password mới
+MemberFrontend -> API: PATCH /users/{id}/password (password data)
+API -> UserBackend: Xử lý yêu cầu thay đổi password
+
+alt Password hiện tại không đúng
+    UserBackend -> MongoDB: Lấy user với password
+    MongoDB --> UserBackend: Trả về user
+    UserBackend -> UserBackend: So sánh password hiện tại
+    UserBackend --> API: Trả về lỗi 400 "Mật khẩu hiện tại không đúng"
+    API --> MemberFrontend: Hiển thị lỗi "Mật khẩu hiện tại không đúng"
+else Password mới quá ngắn
+    UserBackend --> API: Trả về lỗi 400 "Mật khẩu mới phải có ít nhất 6 ký tự"
+    API --> MemberFrontend: Hiển thị lỗi "Mật khẩu mới quá ngắn"
+else Thay đổi password thành công
+    UserBackend -> UserBackend: Hash password mới
+    UserBackend -> MongoDB: Cập nhật password của user
+    MongoDB --> UserBackend: Xác nhận cập nhật thành công
+    UserBackend --> API: Trả về thông báo thành công
+    API --> MemberFrontend: Hiển thị thông báo thành công
+end
+
+== Upload Ảnh Đại Diện ==
+Member -> MemberFrontend: Chọn ảnh đại diện
+MemberFrontend -> MemberFrontend: Validate và resize ảnh
+
+Member -> MemberFrontend: Nhấn "Upload"
+MemberFrontend -> API: POST /upload/profile-image (formData)
+API -> UploadBackend: Xử lý yêu cầu upload ảnh
+UploadBackend -> UploadBackend: Lưu file ảnh
+UploadBackend --> API: Trả về đường dẫn ảnh
+API --> MemberFrontend: Trả về đường dẫn ảnh
+
+MemberFrontend -> API: PATCH /users/{id} (profileImage: newPath)
+API -> UserBackend: Cập nhật profileImage của user
+UserBackend -> MongoDB: Cập nhật user
+MongoDB --> UserBackend: Xác nhận cập nhật thành công
+UserBackend --> API: Trả về user đã cập nhật
+API --> MemberFrontend: Hiển thị ảnh đại diện mới
+
+== Lấy Danh Sách Trainers ==
+Admin -> AdminFrontend: Truy cập trang cần danh sách trainers
+AdminFrontend -> API: GET /users/trainers
+API -> UserBackend: Xử lý yêu cầu lấy trainers
+UserBackend -> MongoDB: Truy vấn users với role='trainer' và active=true
+MongoDB --> UserBackend: Trả về danh sách trainers
+UserBackend --> API: Trả về danh sách trainers
+API --> AdminFrontend: Hiển thị danh sách trainers
+
+@enduml

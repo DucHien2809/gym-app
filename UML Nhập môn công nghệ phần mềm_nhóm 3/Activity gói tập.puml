@@ -1,0 +1,57 @@
+@startuml
+|Thành viên|
+start
+:Truy cập chức năng gói tập;
+:Chọn gói tập muốn đăng ký;
+
+|Hệ thống|
+:Kiểm tra trạng thái đăng nhập;
+if (Đã đăng nhập?) then (có)
+  :Kiểm tra quyền đăng ký gói tập;
+  if (Được phép?) then (có)
+    :Kiểm tra đã có gói tập còn hiệu lực chưa;
+    if (Chưa có) then (chưa)
+      :Nhập thông tin đăng ký;
+      :Xác thực thông tin;
+      if (Hợp lệ?) then (có)
+        :Tạo đăng ký gói tập mới;
+        :Cập nhật trạng thái gói tập;
+        |Thành viên|
+        :Hiển thị thông báo đăng ký thành công;
+      else (không)
+        |Thành viên|
+        :Hiển thị lỗi đăng ký;
+      endif
+    else (đã có)
+      |Thành viên|
+      :Hiển thị thông tin gói tập hiện tại;
+      :Chọn yêu cầu hủy gói tập;
+      |Hệ thống|
+      :Tạo yêu cầu hủy gói tập;
+      :Chờ quản trị viên xử lý;
+    endif
+  else (không)
+    |Thành viên|
+    :Thông báo không có quyền đăng ký;
+  endif
+else (chưa)
+  |Thành viên|
+  :Yêu cầu đăng nhập;
+endif
+
+|Quản trị viên|
+:Kiểm tra các yêu cầu hủy gói tập;
+:Chọn yêu cầu cần xử lý;
+
+|Hệ thống|
+:Kiểm tra điều kiện hủy;
+if (Đủ điều kiện?) then (có)
+  :Cập nhật trạng thái gói tập thành "Đã hủy";
+  :Thông báo cho thành viên;
+else (không)
+  :Từ chối yêu cầu hủy;
+  :Thông báo lý do cho thành viên;
+endif
+
+stop
+@enduml

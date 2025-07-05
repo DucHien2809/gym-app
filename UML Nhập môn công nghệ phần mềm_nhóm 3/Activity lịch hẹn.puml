@@ -1,0 +1,53 @@
+@startuml
+|Thành viên|
+start
+:Truy cập chức năng đặt lịch hẹn;
+:Chọn HLV và thời gian mong muốn;
+
+|Hệ thống|
+:Kiểm tra trạng thái đăng nhập;
+if (Đã đăng nhập?) then (có)
+  :Kiểm tra quyền đặt lịch hẹn;
+  if (Được phép?) then (có)
+    :Kiểm tra lịch trống của HLV;
+    if (Thời gian hợp lệ?) then (có)
+      :Tạo yêu cầu đặt lịch hẹn;
+      :Thông báo chờ xác nhận từ HLV;
+    else (không)
+      |Thành viên|
+      :Thông báo thời gian không khả dụng;
+      stop
+    endif
+  else (không)
+    |Thành viên|
+    :Thông báo không có quyền đặt lịch;
+    stop
+  endif
+else (chưa)
+  |Thành viên|
+  :Yêu cầu đăng nhập;
+  stop
+endif
+
+|Huấn luyện viên|
+:Nhận thông báo yêu cầu đặt lịch;
+:Kiểm tra lịch cá nhân;
+
+|Hệ thống|
+:Hiển thị chi tiết yêu cầu;
+
+|Huấn luyện viên|
+if (Đồng ý?) then (có)
+  :Xác nhận lịch hẹn;
+  |Hệ thống|
+  :Cập nhật trạng thái lịch hẹn thành "Đã xác nhận";
+  :Thông báo cho thành viên;
+else (không)
+  :Từ chối lịch hẹn;
+  |Hệ thống|
+  :Cập nhật trạng thái lịch hẹn thành "Đã từ chối";
+  :Thông báo cho thành viên;
+endif
+
+stop
+@enduml

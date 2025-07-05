@@ -1,0 +1,28 @@
+@startuml
+|Người dùng|
+start
+:Truy cập trang thông tin cá nhân;
+
+|Hệ thống|
+:Kiểm tra trạng thái đăng nhập;
+if (Đã đăng nhập?) then (có)
+  :Lấy thông tin cá nhân từ hệ thống;
+  |Người dùng|
+  :Hiển thị thông tin cá nhân;
+  :Chọn cập nhật thông tin;
+  :Nhập thông tin mới;
+  |Hệ thống|
+  :Xác thực thông tin mới;
+  if (Hợp lệ?) then (có)
+    :Cập nhật thông tin cá nhân;
+    :Hiển thị thông báo thành công;
+  else (không)
+    :Hiển thị lỗi cập nhật;
+  endif
+else (chưa)
+  |Người dùng|
+  :Yêu cầu đăng nhập;
+endif
+
+stop
+@enduml

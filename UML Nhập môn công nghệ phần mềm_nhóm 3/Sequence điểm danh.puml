@@ -1,0 +1,95 @@
+@startuml attendance_sequence
+!theme plain
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+
+actor Trainer
+participant "Frontend\n(Check-in Page)" as Frontend
+participant "AuthContext" as AuthContext
+participant "API Service" as API
+participant "Backend\n(attendance.controller.js)" as Backend
+database "MongoDB\n(Prisma)" as MongoDB
+
+== Tải Trang Điểm Danh ==
+Trainer -> Frontend: Truy cập trang check-in
+Frontend -> AuthContext: Kiểm tra quyền trainer
+AuthContext -> Frontend: Xác nhận quyền truy cập
+
+Frontend -> API: GET /users (lấy danh sách members)
+API -> Backend: Xử lý yêu cầu lấy users
+Backend -> MongoDB: Truy vấn users với role='member'
+MongoDB --> Backend: Trả về danh sách members
+Backend --> API: Trả về danh sách members
+API --> Frontend: Trả về danh sách members
+
+Frontend -> API: GET /attendance (lấy attendance hôm nay)
+API -> Backend: Xử lý yêu cầu lấy attendance
+Backend -> MongoDB: Truy vấn attendance hôm nay
+MongoDB --> Backend: Trả về attendance data
+Backend --> API: Trả về attendance data
+API --> Frontend: Trả về attendance data
+
+Frontend -> API: GET /subscriptions (lấy subscriptions active)
+API -> Backend: Xử lý yêu cầu lấy subscriptions
+Backend -> MongoDB: Truy vấn subscriptions active
+MongoDB --> Backend: Trả về subscriptions data
+Backend --> API: Trả về subscriptions data
+API --> Frontend: Trả về subscriptions data
+
+Frontend -> Frontend: Xử lý và hiển thị danh sách members với trạng thái check-in
+
+== Quy Trình Check-in ==
+Trainer -> Frontend: Chọn member và nhấn "Check-in"
+Frontend -> API: POST /attendance (check-in data)
+API -> Backend: Xử lý yêu cầu check-in
+Backend -> MongoDB: Kiểm tra member tồn tại
+MongoDB --> Backend: Trả về thông tin member
+
+alt Member không tồn tại
+    Backend --> API: Trả về lỗi 404
+    API --> Frontend: Hiển thị lỗi "Không tìm thấy thành viên"
+else Member đã check-in
+    Backend -> MongoDB: Kiểm tra attendance chưa check-out
+    MongoDB --> Backend: Trả về attendance đang active
+    Backend --> API: Trả về lỗi "Đã điểm danh rồi"
+    API --> Frontend: Hiển thị lỗi "Vui lòng check-out trước"
+else Check-in thành công
+    Backend -> MongoDB: Tạo attendance mới
+    MongoDB --> Backend: Xác nhận tạo thành công
+    Backend --> API: Trả về thông tin attendance
+    API --> Frontend: Hiển thị thông báo thành công
+    Frontend -> Frontend: Cập nhật UI (refresh data)
+end
+
+== Quy Trình Check-out ==
+Trainer -> Frontend: Chọn member đang check-in và nhấn "Check-out"
+Frontend -> API: PATCH /attendance/{id} (check-out data)
+API -> Backend: Xử lý yêu cầu check-out
+Backend -> MongoDB: Tìm attendance theo ID
+MongoDB --> Backend: Trả về thông tin attendance
+
+alt Attendance không tồn tại
+    Backend --> API: Trả về lỗi 404
+    API --> Frontend: Hiển thị lỗi "Không tìm thấy điểm danh"
+else Đã check-out rồi
+    Backend --> API: Trả về lỗi "Đã check-out"
+    API --> Frontend: Hiển thị lỗi "Thành viên đã check-out"
+else Check-out thành công
+    Backend -> Backend: Tính thời gian tập (duration)
+    Backend -> MongoDB: Cập nhật checkOutTime và duration
+    MongoDB --> Backend: Xác nhận cập nhật thành công
+    Backend --> API: Trả về thông tin attendance đã cập nhật
+    API --> Frontend: Hiển thị thông báo thành công
+    Frontend -> Frontend: Cập nhật UI (refresh data)
+end
+
+== Xem Lịch Sử Điểm Danh ==
+Trainer -> Frontend: Nhấn "Làm mới" hoặc "Xem lịch sử"
+Frontend -> API: GET /attendance (với filter)
+API -> Backend: Xử lý yêu cầu lấy attendance
+Backend -> MongoDB: Truy vấn attendance với include member data
+MongoDB --> Backend: Trả về attendance với member info
+Backend --> API: Trả về danh sách attendance
+API --> Frontend: Hiển thị lịch sử điểm danh
+
+@enduml

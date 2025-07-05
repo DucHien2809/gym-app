@@ -1,0 +1,50 @@
+@startuml
+|Thành viên|
+start
+:Truy cập chức năng điểm danh;
+
+|Hệ thống|
+:Kiểm tra trạng thái đăng nhập;
+if (Đã đăng nhập?) then (có)
+  :Kiểm tra quyền truy cập điểm danh;
+  if (Được phép?) then (có)
+    :Chọn loại điểm danh (Vào/Ra);
+    if (Điểm danh vào?) then (có)
+      :Kiểm tra đã điểm danh vào hôm nay chưa;
+      if (Chưa điểm danh vào) then (chưa)
+        :Ghi nhận điểm danh vào;
+        :Cập nhật lịch sử điểm danh;
+        |Thành viên|
+        :Hiển thị thông báo thành công;
+      else (đã)
+        |Thành viên|
+        :Thông báo đã điểm danh vào rồi;
+      endif
+    else (điểm danh ra)
+      :Kiểm tra đã điểm danh vào chưa;
+      if (Đã điểm danh vào) then (có)
+        :Kiểm tra đã điểm danh ra chưa;
+        if (Chưa điểm danh ra) then (chưa)
+          :Ghi nhận điểm danh ra;
+          :Cập nhật lịch sử điểm danh;
+          |Thành viên|
+          :Hiển thị thông báo thành công;
+        else (đã)
+          |Thành viên|
+          :Thông báo đã điểm danh ra rồi;
+        endif
+      else (chưa)
+        |Thành viên|
+        :Thông báo cần điểm danh vào trước;
+      endif
+    endif
+  else (không)
+    |Thành viên|
+    :Thông báo không có quyền điểm danh;
+  endif
+else (chưa)
+  |Thành viên|
+  :Yêu cầu đăng nhập;
+endif
+stop
+@enduml
